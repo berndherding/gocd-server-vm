@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+
+# shellcheck source=server.inc
+. "$DIR/server.inc"
+
+SERVER_STACKNAME=gocd-svm
+CLUSTER_STACKNAME=gocd-svc
+
+_GO_PIPELINE_COUNTER=-${GO_PIPELINE_COUNTER:-0}
+
+SERVER_STACKNAME=$SERVER_STACKNAME$_GO_PIPELINE_COUNTER
+CLUSTER_STACKNAME=$CLUSTER_STACKNAME$_GO_PIPELINE_COUNTER
+
+createServerInstance \
+  "${1:-$SERVER_STACKNAME}" \
+  "${2:-$CLUSTER_STACKNAME}"

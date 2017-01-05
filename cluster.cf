@@ -1,0 +1,66 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+
+  "Description": "GoCD Server Cluster",
+
+  "Parameters" : {
+    "ClusterName": {
+      "Type" : "String",
+    },
+    "GithubPemKey" : {
+      "Type" : "String",
+      "NoEcho": true
+    }
+  },
+
+  "Resources": {
+
+    "Service": {
+      "Type": "AWS::ECS::Service",
+      "Properties" : {
+        "Cluster": { "Ref": "ClusterName" },
+        "DesiredCount": 1,
+        "TaskDefinition" : { "Ref": "TaskDefinition" }
+      }
+    },
+
+    "TaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties" : {
+        "ContainerDefinitions" : [ 
+          {
+            "Name": "go-server",
+            "Image":"bherding/go-server:0",
+            "PortMappings":[
+              { "ContainerPort": 8153, "HostPort": 8153 },
+              { "ContainerPort": 8154, "HostPort": 8154 },
+              { "ContainerPort": 8153, "HostPort": 80   },
+              { "ContainerPort": 8154, "HostPort": 443  }
+            ],
+            "Essential": "true",
+            "Memory": 1800,
+            "MountPoints": [
+              {
+                "ContainerPath": "/etc/go",
+                "SourceVolume":   "etc-go"
+              },
+              {
+                "ContainerPath": "/var/lib/go-server",
+                "SourceVolume":   "var-lib-go-server"
+              }
+            ],
+            "Environment": [
+              { "Name": "GITHUB_PEM_KEY", "Value": { "Ref": "GithubPemKey" } },
+              { "Name": "RUN_MODE",       "Value": "live" }
+            ]
+          }
+        ],
+        "Volumes": [
+          { "Host": { "SourcePath": "/xvdb" },  "Name": "etc-go" },
+          { "Host": { "SourcePath": "/xvdc" }, "Name": "var-lib-go-server" }
+        ],
+        "Family": "go-server"
+      }
+    }
+  }
+}
