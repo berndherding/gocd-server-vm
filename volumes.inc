@@ -48,6 +48,8 @@ function createSnapshotFromLive() {
 
   aws ec2 wait snapshot-completed --snapshot-ids "$snapshotId" || return 4
 
+  labelSnapshot "$snapshotId" "$stackname-$volumename"
+
   echo "$snapshotId"
 }
 
@@ -87,8 +89,9 @@ function destroySnapshotOfVolume() {
 
 
 
-function getLiveOrMasterVolume() {
+function getLabeledVolume() {
   local volumeBaseName=$1
+  local label=$2
   local details
 
   # is there a volume labeled $volumeBaseName-* and tagged LIVE?
@@ -97,28 +100,11 @@ function getLiveOrMasterVolume() {
     aws ec2 describe-volumes \
     --filters \
       Name=status,Values=available,in-use \
-      Name=tag:Name,Values="*$volumeBaseName-*" \
+      Name=tag:Name,Values="*$volumeBaseName*" \
       Name=tag:Stage,Values=LIVE \
     --query 'Volumes[*].{VolumeName:Tags[?Key==`Name`].Value,VolumeId:VolumeId,State:State}' \
     --output json 2> /dev/null
   )
-
-  details=${details#\[}
-  details=${details%\]}
-
-  if [ -z "$details" ] ; then
-
-    # is there a volume labeled $volumeBaseName (without counter and prefix)?
-    # shellcheck disable=SC2016
-    details=$(
-      aws ec2 describe-volumes \
-      --filters \
-        Name=status,Values=available,in-use \
-        Name=tag:Name,Values="$volumeBaseName" \
-      --query 'Volumes[*].{VolumeName:Tags[?Key==`Name`].Value,VolumeId:VolumeId,State:State}' \
-      --output json 2> /dev/null
-    )
-  fi
 
   details=${details#\[}
   details=${details%\]}
@@ -131,27 +117,26 @@ function getLiveOrMasterVolume() {
 function getSnapshotId() {
   local stackname=$1 
   local volumename=$2
+  local label=$3
 
-  liveVolumeDetails="$(getLiveOrMasterVolume "$(getBaseName "$volumename")")"
+  liveVolumeDetails="$(getLabeledVolume "$volumename" "$label")"
 
   if [ -n "$liveVolumeDetails" ] ; then
     snapshotId=$(createSnapshotFromLive "$stackname" "$volumename" "$liveVolumeDetails") || return $?
-    labelSnapshot "$snapshotId" "$stackname-$volumename"
   fi
 
+  # may be undefined
   echo "$snapshotId"
 }
 
 
 
 function createVolumes() {
-  # TODO
-  # shellcheck disable=SC2034
-  local label=$1
-  local stackname=$2
+  local stackname=$1
+  local label=$2
 
-  snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go")  || return $?
-  snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib") || return $?
+  snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go"  "$label") || return $?
+  snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib" "$label") || return $?
 
   createVolumeStack "$stackname" "$snapshotIdEtcGo" "$snapshotIdVarLib"
 
