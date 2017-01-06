@@ -62,7 +62,7 @@ function createCluster() {
   --template-body file://"$DIR/cluster.cf" \
   --parameters \
     ParameterKey=ClusterName,ParameterValue="$clusterName" \
-    ParameterKey=GithubPemKey,ParameterValue="$GITHUB_PEM_KEY" \
+    ParameterKey=GithubPemKey,ParameterValue="$(getGithubPrivateKey)" \
   || return 4
 
   echo "*** please wait for create-stack to complete. this may take a few minutes."
