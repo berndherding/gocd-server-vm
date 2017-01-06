@@ -19,11 +19,10 @@ if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 function createInstance() {
   local serverStackname=$1
 
+  vpcId=$(getDefaultVpcId)
+  imageId=$(getImageId)
   etcGoVolumeId="$(cat "$DIR"/target/etcGoVolumeId)"
   varLibVolumeId="$(cat "$DIR"/target/varLibVolumeId)"
-  vpcId=$(getDefaultVpcId)
-
-  imageId=$(getImageId)
 
   ecsAuth="$(echo -n "$(getDockerHubUsername):$(getDockerHubPassword)" | base64)"
   ecsEmail="$(getDockerHubEmail)"
@@ -57,11 +56,14 @@ function createCluster() {
     --out text
   )" || return 3
 
+  dockerImage="$(cat "$DIR"/target/gocdServerImageName)"
+
   aws cloudformation create-stack \
   --stack-name "$clusterStackname" \
   --template-body file://"$DIR/cluster.cf" \
   --parameters \
     ParameterKey=ClusterName,ParameterValue="$clusterName" \
+    ParameterKey=DockerImage,ParameterValue="$dockerImage" \
     ParameterKey=GithubPemKey,ParameterValue="$(getGithubPrivateKey)" \
   || return 4
 

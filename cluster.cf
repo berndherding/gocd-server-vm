@@ -7,6 +7,9 @@
     "ClusterName": {
       "Type" : "String",
     },
+    "DockerImage": {
+      "Type" : "String",
+    },
     "GithubPemKey" : {
       "Type" : "String",
       "NoEcho": true
@@ -30,7 +33,7 @@
         "ContainerDefinitions" : [ 
           {
             "Name": "go-server",
-            "Image":"bherding/go-server:0",
+            "Image": { "Ref": "DockerImage" },
             "PortMappings":[
               { "ContainerPort": 8153, "HostPort": 8153 },
               { "ContainerPort": 8154, "HostPort": 8154 },
