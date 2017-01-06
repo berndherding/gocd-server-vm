@@ -2,13 +2,15 @@
 
 DIR="${BASH_SOURCE%/*}"
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+_DIR="$DIR"
 
 # shellcheck source=../server.inc
 . "$DIR/../server.inc"
-# shellcheck source=../cluster.inc
-. "$DIR/../cluster.inc"
+DIR="$_DIR"
+
 # shellcheck source=../volumes.inc
 . "$DIR/../volumes.inc"
+DIR="$_DIR"
 
 SERVER_STACKNAME=test-svm
 CLUSTER_STACKNAME=test-svc

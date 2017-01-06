@@ -2,7 +2,7 @@
 
 shopt -s extglob
 
-DIR="${BASH_SOURCE%/*}"
+DIR="${BASH_SOURCE%/*}" # extract path
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 
 [ ! -d "$DIR/inc"    ] && ln -s ../gocd-base-ami/inc    "$DIR/inc"
