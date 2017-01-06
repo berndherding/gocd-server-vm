@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 
-DIR="${BASH_SOURCE%/*}"
-if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-
 # shellcheck source=volumes.inc
-. "$DIR/volumes.inc"
+. "$(dirname "$BASH_SOURCE")/volumes.inc"
 
 VOLUME_STACKNAME=gocd-vol
 

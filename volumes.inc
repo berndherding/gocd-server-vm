@@ -1,18 +1,13 @@
 #!/bin/bash
 
-shopt -s extglob
-
-DIR="${BASH_SOURCE%/*}"
-if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-
-[ ! -d "$DIR/inc"    ] && ln -s ../gocd-base-ami/inc    "$DIR/inc"
-[ ! -d "$DIR/target" ] && ln -s ../gocd-base-ami/target "$DIR/target"
+[ ! -d "$(dirname "${BASH_SOURCE[0]}")/inc"    ] && ln -s ../gocd-base-ami/inc    "$(dirname "${BASH_SOURCE[0]}")/inc"
+[ ! -d "$(dirname "${BASH_SOURCE[0]}")/target" ] && ln -s ../gocd-base-ami/target "$(dirname "${BASH_SOURCE[0]}")/target"
 
 # shellcheck source=/dev/null
-. "$DIR/inc/commons.inc"
+. "$(dirname "${BASH_SOURCE[0]}")/inc/commons.inc"
 
 # shellcheck source=/dev/null
-. "$DIR/inc/keys.inc"
+. "$(dirname "${BASH_SOURCE[0]}")/inc/keys.inc"
 
 
 
@@ -65,7 +60,7 @@ function createVolumeStack() {
 
   aws cloudformation create-stack \
   --stack-name "$stackname" \
-  --template-body file://"$DIR/volumes.cf" \
+  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/volumes.cf" \
   --parameters \
     ParameterKey=SnapshotIdEtcGo,ParameterValue="$snapshotIdEtcGo" \
     ParameterKey=SnapshotIdVarLib,ParameterValue="$snapshotIdVarLib" \
@@ -140,8 +135,8 @@ function createVolumes() {
 
   createVolumeStack "$stackname" "$snapshotIdEtcGo" "$snapshotIdVarLib"
 
-  getVolumeId "$stackname-etc-go"  > "$DIR"/target/etcGoVolumeId
-  getVolumeId "$stackname-var-lib" > "$DIR"/target/varLibVolumeId
+  getVolumeId "$stackname-etc-go"  > "$(dirname "${BASH_SOURCE[0]}")"/target/etcGoVolumeId
+  getVolumeId "$stackname-var-lib" > "$(dirname "${BASH_SOURCE[0]}")"/target/varLibVolumeId
 }
 
 

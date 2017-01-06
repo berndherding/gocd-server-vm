@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 
-DIR="${BASH_SOURCE%/*}"
-if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-
 # shellcheck source=server.inc
-. "$DIR/server.inc"
+. "$(dirname "$BASH_SOURCE")/server.inc"
 
 SERVER_STACKNAME=gocd-svm
 CLUSTER_STACKNAME=gocd-svc

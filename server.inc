@@ -1,18 +1,13 @@
 #!/bin/bash
 
-shopt -s extglob
-
-DIR="${BASH_SOURCE%/*}" # extract path
-if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-
-[ ! -d "$DIR/inc"    ] && ln -s ../gocd-base-ami/inc    "$DIR/inc"
-[ ! -d "$DIR/target" ] && ln -s ../gocd-base-ami/target "$DIR/target"
+[ ! -d "$(dirname "${BASH_SOURCE[0]}")/inc"    ] && ln -s ../gocd-base-ami/inc    "$(dirname "${BASH_SOURCE[0]}")/inc"
+[ ! -d "$(dirname "${BASH_SOURCE[0]}")/target" ] && ln -s ../gocd-base-ami/target "$(dirname "${BASH_SOURCE[0]}")/target"
 
 # shellcheck source=/dev/null
-. "$DIR/inc/commons.inc"
+. "$(dirname "${BASH_SOURCE[0]}")/inc/commons.inc"
 
 # shellcheck source=/dev/null
-. "$DIR/inc/keys.inc"
+. "$(dirname "${BASH_SOURCE[0]}")/inc/keys.inc"
 
 
 
@@ -21,15 +16,15 @@ function createInstance() {
 
   vpcId=$(getDefaultVpcId)
   imageId=$(getImageId)
-  etcGoVolumeId="$(cat "$DIR"/target/etcGoVolumeId)"
-  varLibVolumeId="$(cat "$DIR"/target/varLibVolumeId)"
+  etcGoVolumeId="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/etcGoVolumeId)"
+  varLibVolumeId="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/varLibVolumeId)"
 
   ecsAuth="$(echo -n "$(getDockerHubUsername):$(getDockerHubPassword)" | base64)"
   ecsEmail="$(getDockerHubEmail)"
 
   aws cloudformation create-stack \
   --stack-name "$serverStackname" \
-  --template-body file://"$DIR/server.cf" \
+  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/server.cf" \
   --parameters \
     ParameterKey=VpcId,ParameterValue="$vpcId" \
     ParameterKey=ImageId,ParameterValue="$imageId" \
@@ -56,11 +51,11 @@ function createCluster() {
     --out text
   )" || return 3
 
-  dockerImage="$(cat "$DIR"/target/gocdServerImageName)"
+  dockerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName)"
 
   aws cloudformation create-stack \
   --stack-name "$clusterStackname" \
-  --template-body file://"$DIR/cluster.cf" \
+  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/cluster.cf" \
   --parameters \
     ParameterKey=ClusterName,ParameterValue="$clusterName" \
     ParameterKey=DockerImage,ParameterValue="$dockerImage" \
@@ -118,9 +113,9 @@ function mountVolumes() {
   "
 
   # artifacts
-  echo "$publicDnsName"    > "$DIR"/target/goServerPublicDnsName
-  echo "$publicIpAddress"  > "$DIR"/target/goServerPublicIpAddress
-  echo "$privateIpAddress" > "$DIR"/target/goServerPrivateIpAddress
+  echo "$publicDnsName"    > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicDnsName
+  echo "$publicIpAddress"  > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress
+  echo "$privateIpAddress" > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPrivateIpAddress
 }
 
 
