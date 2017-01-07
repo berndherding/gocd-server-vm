@@ -35,7 +35,7 @@
     "VolumeVarLib" : {
       "Type" : "AWS::EC2::Volume",
       "Properties" : {
-        "Size" : { "Fn::If" : [ "CreateVarLibFromSnapshot", { "Ref" : "AWS::NoValue" }, 1 ] },
+        "Size" : { "Fn::If" : [ "CreateVarLibFromSnapshot", { "Ref" : "AWS::NoValue" }, 100 ] },
         "VolumeType" : "gp2",
         "Tags": [
           { "Key": "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "AWS::StackName" }, "var-lib" ] ] } }
