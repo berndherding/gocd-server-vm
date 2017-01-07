@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # shellcheck source=../server.inc
-. "$(dirname "$BASH_SOURCE")/../server.inc"
+. "$(dirname "${BASH_SOURCE[0]}")/../server.inc"
 
 # shellcheck source=../volumes.inc
-. "$(dirname "$BASH_SOURCE")/../volumes.inc"
+. "$(dirname "${BASH_SOURCE[0]}")/../volumes.inc"
 
 SERVER_STACKNAME=test-svm
 CLUSTER_STACKNAME=test-svc
