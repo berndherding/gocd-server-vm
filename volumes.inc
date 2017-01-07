@@ -11,13 +11,13 @@
 
 
 
-function labelSnapshot() {
+function setSnapshotName() {
   local snapshotId=$1
-  local name=$2
+  local snapshotName=$2
 
   aws ec2 create-tags \
   --resources "$snapshotId" \
-  --tags Key=Name,Value="$name" \
+  --tags Key=Name,Value="$snapshotName" \
   || return 5
 }
 
@@ -43,7 +43,7 @@ function createSnapshotFromLive() {
 
   aws ec2 wait snapshot-completed --snapshot-ids "$snapshotId" || return 4
 
-  labelSnapshot "$snapshotId" "$stackname-$volumename"
+  setSnapshotName "$snapshotId" "$stackname-$volumename"
 
   echo "$snapshotId"
 }
@@ -86,17 +86,17 @@ function destroySnapshotOfVolume() {
 
 function getLabeledVolume() {
   local volumeBaseName=$1
-  local label=$2
+  local volumeLabel=$2
   local details
 
-  # is there a volume labeled $volumeBaseName-* and tagged LIVE?
+  # is there a volume named $*volumeBaseName* and tagged with $volumeLabel?
   # shellcheck disable=SC2016
   details=$(
     aws ec2 describe-volumes \
     --filters \
       Name=status,Values=available,in-use \
+      Name=tag:Stage,Values="$volumeLabel" \
       Name=tag:Name,Values="*$volumeBaseName*" \
-      Name=tag:Stage,Values=LIVE \
     --query 'Volumes[*].{VolumeName:Tags[?Key==`Name`].Value,VolumeId:VolumeId,State:State}' \
     --output json 2> /dev/null
   )
@@ -112,9 +112,9 @@ function getLabeledVolume() {
 function getSnapshotId() {
   local stackname=$1 
   local volumename=$2
-  local label=$3
+  local volumeLabel=$3
 
-  liveVolumeDetails="$(getLabeledVolume "$volumename" "$label")"
+  liveVolumeDetails="$(getLabeledVolume "$volumename" "$volumeLabel")"
 
   if [ -n "$liveVolumeDetails" ] ; then
     snapshotId=$(createSnapshotFromLive "$stackname" "$volumename" "$liveVolumeDetails") || return $?
@@ -126,12 +126,12 @@ function getSnapshotId() {
 
 
 
-function createVolumes() {
+function createVolumesBasedOnVolumeLabel() {
   local stackname=$1
-  local label=$2
+  local volumeLabel=$2
 
-  snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go"  "$label") || return $?
-  snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib" "$label") || return $?
+  snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go"  "$volumeLabel") || return $?
+  snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib" "$volumeLabel") || return $?
 
   createVolumeStack "$stackname" "$snapshotIdEtcGo" "$snapshotIdVarLib"
 

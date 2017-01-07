@@ -12,6 +12,7 @@
     },
     "EcsAuth" : {
       "Type" : "String"
+      "NoEcho": true
     },
     "EcsEmail" : {
       "Type" : "String"

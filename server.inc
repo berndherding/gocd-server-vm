@@ -41,8 +41,9 @@ function createInstance() {
 
 
 function createCluster() {
-  local clusterStackname=$1
-  local serverStackname=$2
+  local serverStackname=$1
+  local clusterStackname=$2
+  local mapSourceVolumes=$3
 
   # shellcheck disable=SC2016
   clusterName="$(aws cloudformation describe-stacks \
@@ -60,6 +61,7 @@ function createCluster() {
     ParameterKey=ClusterName,ParameterValue="$clusterName" \
     ParameterKey=DockerImage,ParameterValue="$dockerImage" \
     ParameterKey=GithubPemKey,ParameterValue="$(getGithubPrivateKey)" \
+    ParameterKey=MapSourceVolumes,ParameterValue="$mapSourceVolumes" \
   || return 4
 
   echo "*** please wait for create-stack to complete. this may take a few minutes."
@@ -71,10 +73,11 @@ function createCluster() {
 function createServerInstance() {
   local serverStackname=$1
   local clusterStackname=$2
+  local mapSourceVolumes=$3
 
-  createInstance "$serverStackname"                     || return $?
-  mountVolumes   "$serverStackname"                     || return $?
-  createCluster  "$clusterStackname" "$serverStackname" || return $?
+  createInstance "$serverStackname" || return $?
+  mountVolumes   "$serverStackname" || return $?
+  createCluster  "$serverStackname" "$clusterStackname" "$mapSourceVolumes" || return $?
 }
 
 

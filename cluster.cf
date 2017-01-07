@@ -5,15 +5,23 @@
 
   "Parameters" : {
     "ClusterName": {
-      "Type" : "String",
+      "Type" : "String"
     },
     "DockerImage": {
-      "Type" : "String",
+      "Type" : "String"
     },
     "GithubPemKey" : {
       "Type" : "String",
       "NoEcho": true
+    },
+    "MapSourceVolumes": {
+      "Type"    : "String",
+      "Default" : "true"
     }
+  },
+
+  "Conditions" : {
+    "MapSourceVolumes" : { "Fn::Equals": [ { "Ref": "MapSourceVolumes" }, "true" ] }
   },
 
   "Resources": {
@@ -44,11 +52,11 @@
             "Memory": 1800,
             "MountPoints": [
               {
-                "ContainerPath": "/etc/go",
+                "ContainerPath": { "Fn::If" : [ "MapSourceVolumes", "/etc/go", "/xvdb" ] },
                 "SourceVolume":   "etc-go"
               },
               {
-                "ContainerPath": "/var/lib/go-server",
+                "ContainerPath": { "Fn::If" : [ "MapSourceVolumes", "/var/lib/go-server", "/xvdc" ] },
                 "SourceVolume":   "var-lib-go-server"
               }
             ],
@@ -59,7 +67,7 @@
           }
         ],
         "Volumes": [
-          { "Host": { "SourcePath": "/xvdb" },  "Name": "etc-go" },
+          { "Host": { "SourcePath": "/xvdb" }, "Name": "etc-go" },
           { "Host": { "SourcePath": "/xvdc" }, "Name": "var-lib-go-server" }
         ],
         "Family": "go-server"
