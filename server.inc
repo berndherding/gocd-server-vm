@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 [ ! -d "$(dirname "${BASH_SOURCE[0]}")/inc"    ] && ln -s ../gocd-base-ami/inc    "$(dirname "${BASH_SOURCE[0]}")/inc"
 [ ! -d "$(dirname "${BASH_SOURCE[0]}")/target" ] && ln -s ../gocd-base-ami/target "$(dirname "${BASH_SOURCE[0]}")/target"
@@ -52,14 +52,14 @@ function createCluster() {
     --out text
   )" || return 3
 
-  dockerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName)"
+  gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName)"
 
   aws cloudformation create-stack \
   --stack-name "$clusterStackname" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/cluster.cf" \
   --parameters \
     ParameterKey=ClusterName,ParameterValue="$clusterName" \
-    ParameterKey=DockerImage,ParameterValue="$dockerImage" \
+    ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GithubPemKey,ParameterValue="$(getGithubPrivateKey)" \
     ParameterKey=MapSourceVolumes,ParameterValue="$mapSourceVolumes" \
   || return 4

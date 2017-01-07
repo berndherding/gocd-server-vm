@@ -7,7 +7,7 @@
     "ClusterName": {
       "Type" : "String"
     },
-    "DockerImage": {
+    "GoCDServerImage": {
       "Type" : "String"
     },
     "GithubPemKey" : {
@@ -41,7 +41,7 @@
         "ContainerDefinitions" : [ 
           {
             "Name": "go-server",
-            "Image": { "Ref": "DockerImage" },
+            "Image": { "Ref": "GoCDServerImage" },
             "PortMappings":[
               { "ContainerPort": 8153, "HostPort": 8153 },
               { "ContainerPort": 8154, "HostPort": 8154 },
@@ -49,7 +49,7 @@
               { "ContainerPort": 8154, "HostPort": 443  }
             ],
             "Essential": "true",
-            "Memory": 1800,
+            "Memory": 1200,
             "MountPoints": [
               {
                 "ContainerPath": { "Fn::If" : [ "MapSourceVolumes", "/etc/go", "/xvdb" ] },
