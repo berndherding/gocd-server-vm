@@ -15,7 +15,7 @@ function createInstance() {
   local serverStackname=$1
 
   vpcId=$(getDefaultVpcId)
-  imageId=$(getImageId)
+  imageId="ami-e012d48f"   # $(getImageId)
   etcGoVolumeId="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/etcGoVolumeId)"
   varLibVolumeId="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/varLibVolumeId)"
 
