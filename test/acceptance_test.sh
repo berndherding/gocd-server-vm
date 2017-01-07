@@ -21,7 +21,7 @@ SHUNIT=$(which shunit)
 
 
 function testCreateVolumes() {
-  createVolumes "$VOLUMES_STACKNAME" "TEST"
+  createVolumesBasedOnVolumeLabel "$VOLUMES_STACKNAME" "TEST"
   assertEquals "createVolumes failed" 0 $?
 }
 
