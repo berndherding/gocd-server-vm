@@ -86,18 +86,38 @@ function createServerInstance() {
 
 
 
-function destroyServerInstance() {
-  local serverStackname=$1
-  local clusterStackname=$3
-
+function destroyCluster() {
+  local clusterStackname=$1
   destroyStack "$clusterStackname" || return $? 
+}
+
+
+
+function unmountVolumes() {
+  local serverStackname=$1
 
   ip=$(getPublicIpAddress "$serverStackname")
 
   $SSH "ec2-user@$ip" 'sudo umount /xvdb' || return 6
   $SSH "ec2-user@$ip" 'sudo umount /xvdc' || return 7
+}
 
-  destroyStack "$serverStackname"  || return $?
+
+
+function destroyInstance() {
+  local serverStackname=$1
+  destroyStack "$serverStackname" || return $?
+}
+
+
+
+function destroyServerInstance() {
+  local serverStackname=$1
+  local clusterStackname=$2
+
+  destroyCluster  "$clusterStackname"
+  umountVolumes   "$serverStackname"
+  destroyInstance "$serverStackname"
 }
 
 
