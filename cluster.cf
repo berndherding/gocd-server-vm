@@ -7,7 +7,13 @@
     "ClusterName": {
       "Type" : "String"
     },
+    "GoCDAgentImage": {
+      "Type" : "String"
+    },
     "GoCDServerImage": {
+      "Type" : "String"
+    },
+    "GoServerUrl": {
       "Type" : "String"
     },
     "GithubPemKey" : {
@@ -64,11 +70,29 @@
               { "Name": "GITHUB_PEM_KEY", "Value": { "Ref": "GithubPemKey" } },
               { "Name": "RUN_MODE",       "Value": "live" }
             ]
+          },
+          {
+            "Name": "go-agent",
+            "Image": { "Ref": "GoCDAgentImage" },
+            "Memory": 500,
+            "MountPoints": [
+              {
+                "ContainerPath": "/var/run/docker.sock",
+                "SourceVolume":   "var-run-docker-sock"
+              },
+            ],
+            "Environment": [
+              { "Name": "AWS_DEFAULT_REGION", "Value": "eu-central-1" },
+              { "Name": "GITHUB_PEM_KEY",     "Value": { "Ref": "GithubPemKey" } },
+              { "Name": "GO_SERVER",          "Value": { "Ref": "GoServerUrl" } },
+              { "Name": "RUN_MODE",           "Value": "live" }
+            ]
           }
         ],
         "Volumes": [
           { "Host": { "SourcePath": "/xvdb" }, "Name": "etc-go" },
-          { "Host": { "SourcePath": "/xvdc" }, "Name": "var-lib-go-server" }
+          { "Host": { "SourcePath": "/xvdc" }, "Name": "var-lib-go-server" },
+          { "Host": { "SourcePath": "/var/run/docker.sock" }, "Name": "var-run-docker-sock" }
         ],
         "Family": "go-server"
       }
