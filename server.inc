@@ -52,14 +52,18 @@ function createCluster() {
     --out text
   )" || return 3
 
+  gocdAgentImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName)"
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName)"
+  goServerUrl="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress)"
 
   aws cloudformation create-stack \
   --stack-name "$clusterStackname" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/cluster.cf" \
   --parameters \
     ParameterKey=ClusterName,ParameterValue="$clusterName" \
+    ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
+    ParameterKey=GoServerUrl,ParameterValue="$goServerUrl" \
     ParameterKey=GithubPemKey,ParameterValue="$(getGithubPrivateKey)" \
     ParameterKey=MapSourceVolumes,ParameterValue="$mapSourceVolumes" \
   || return 4
