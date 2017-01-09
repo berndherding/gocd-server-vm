@@ -6,9 +6,9 @@
 # shellcheck source=../volumes.inc
 . "$(dirname "${BASH_SOURCE[0]}")/../volumes.inc"
 
-SERVER_STACKNAME=test-svm
-CLUSTER_STACKNAME=test-svc
-VOLUMES_STACKNAME=test-vol
+SERVER_STACKNAME=gocd-svm
+CLUSTER_STACKNAME=gocd-svc
+VOLUMES_STACKNAME=gocd-vol
 
 _GO_PIPELINE_COUNTER=-${GO_PIPELINE_COUNTER:-0}
 
