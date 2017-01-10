@@ -23,18 +23,18 @@ function setSnapshotName() {
 
 
 
-function createSnapshotFromLive() {
+function createSnapshotFromLabeledVolume() {
   local stackname=$1
   local volumename=$2
-  local liveVolumeDetails=$3
+  local labeledVolumeDetails=$3
 
-  liveVolumeId=$(getFromDetails "$liveVolumeDetails" VolumeId)
-  liveVolumeName=$(getFromDetails "$liveVolumeDetails" VolumeName)
+  labeledVolumeId=$(getFromDetails "$labeledVolumeDetails" VolumeId)
+  labeledVolumeName=$(getFromDetails "$labeledVolumeDetails" VolumeName)
 
   json=$(
     aws ec2 create-snapshot \
-    --volume-id "$liveVolumeId" \
-    --description "based on $liveVolumeName ($liveVolumeId)"
+    --volume-id "$labeledVolumeId" \
+    --description "based on $labeledVolumeName ($labeledVolumeId)"
   ) || return 3
 
   # stupid, i know. just to not add a dependency to jq.
@@ -112,12 +112,12 @@ function getLabeledVolume() {
 function getSnapshotId() {
   local stackname=$1 
   local volumename=$2
-  local volumeLabel=$3
+  local basedOnLabel=$3
 
-  liveVolumeDetails="$(getLabeledVolume "$volumename" "$volumeLabel")"
+  labeledVolumeDetails="$(getLabeledVolume "$volumename" "$basedOnLabel")"
 
-  if [ -n "$liveVolumeDetails" ] ; then
-    snapshotId=$(createSnapshotFromLive "$stackname" "$volumename" "$liveVolumeDetails") || return $?
+  if [ -n "$labeledVolumeDetails" ] ; then
+    snapshotId=$(createSnapshotFromLabeledVolume "$stackname" "$volumename" "$labeledVolumeDetails") || return $?
   fi
 
   # may be undefined
@@ -126,12 +126,12 @@ function getSnapshotId() {
 
 
 
-function createVolumesBasedOnVolumeLabel() {
+function createVolumesBasedOnLabel() {
   local stackname=$1
-  local volumeLabel=$2
+  local basedOnLabel=$2
 
-  snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go"  "$volumeLabel") || return $?
-  snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib" "$volumeLabel") || return $?
+  snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go"  "$basedOnLabel") || return $?
+  snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib" "$basedOnLabel") || return $?
 
   createVolumeStack "$stackname" "$snapshotIdEtcGo" "$snapshotIdVarLib"
 
