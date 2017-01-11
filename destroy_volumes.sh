@@ -3,12 +3,8 @@
 # shellcheck source=volumes.inc
 . "$(dirname "$BASH_SOURCE")/volumes.inc"
 
-ENVIRONMENT=${1:-test}
+env=${1:-test}
 
-_GO_PIPELINE_COUNTER=-${GO_PIPELINE_COUNTER:-0}
+gocd_vol="$(getStackname "gocd-vol" "$env")"
 
-VOLUME_STACKNAME=gocd-vol
-VOLUME_STACKNAME=$VOLUME_STACKNAME$_GO_PIPELINE_COUNTER
-VOLUME_STACKNAME=$VOLUME_STACKNAME-$ENVIRONMENT
-
-destroyVolumes "${1:-$VOLUME_STACKNAME}"
+destroyVolumes "$gocd_vol"

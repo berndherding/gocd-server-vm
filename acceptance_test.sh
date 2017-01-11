@@ -6,29 +6,19 @@
 # shellcheck source=volumes.inc
 . "$(dirname "${BASH_SOURCE[0]}")/volumes.inc"
 
-ENVIRONMENT=test
+env=test
 
-_GO_PIPELINE_COUNTER=-${GO_PIPELINE_COUNTER:-0}
-
-
-SERVER_STACKNAME=gocd-svm
-SERVER_STACKNAME=$SERVER_STACKNAME$_GO_PIPELINE_COUNTER
-SERVER_STACKNAME=$SERVER_STACKNAME-$ENVIRONMENT
-
-CLUSTER_STACKNAME=gocd-svc
-CLUSTER_STACKNAME=$CLUSTER_STACKNAME$_GO_PIPELINE_COUNTER
-CLUSTER_STACKNAME=$CLUSTER_STACKNAME-$ENVIRONMENT
-
-VOLUMES_STACKNAME=gocd-vol
-VOLUMES_STACKNAME=$VOLUMES_STACKNAME$_GO_PIPELINE_COUNTER
-VOLUMES_STACKNAME=$VOLUMES_STACKNAME-$ENVIRONMENT
+VOLUMES_STACKNAME="$(getStackname "gocd-vol" "$env")"
+SERVER_STACKNAME="$(getStackname "gocd-svm" "$env")"
+CLUSTER_STACKNAME="$(getStackname "gocd-svc" "$env")"
 
 SHUNIT=$(which shunit)
 
 
 
 function testCreateVolumes() {
-  createVolumesBasedOnLabel "$VOLUMES_STACKNAME" "TEST"
+  # "NONE" label should not exist -> new, empty volume created
+  createVolumesBasedOnLabel "$VOLUMES_STACKNAME" "NONE"
   assertEquals "createVolumes failed" 0 $?
 }
 

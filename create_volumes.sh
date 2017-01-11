@@ -3,15 +3,9 @@
 # shellcheck source=volumes.inc
 . "$(dirname "$BASH_SOURCE")/volumes.inc"
 
-ENVIRONMENT=${1:-test}
-BASED_ON_LABEL=LIVE
+env=${1:-test}
+fromVolumeLabeled=${2:-none}  # "none", "live"
 
-_GO_PIPELINE_COUNTER=-${GO_PIPELINE_COUNTER:-0}
+gocd_vol="$(getStackname "gocd-vol" "$env")"
 
-VOLUMES_STACKNAME=gocd-vol
-VOLUMES_STACKNAME=$VOLUMES_STACKNAME$_GO_PIPELINE_COUNTER
-VOLUMES_STACKNAME=$VOLUMES_STACKNAME-$ENVIRONMENT
-
-createVolumesBasedOnLabel \
-  "$VOLUMES_STACKNAME" \
-  "$BASED_ON_LABEL"
+createVolumesBasedOnLabel "$gocd_vol" "$fromVolumeLabeled"

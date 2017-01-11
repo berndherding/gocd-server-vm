@@ -3,18 +3,15 @@
 # shellcheck source=server.inc
 . "$(dirname "$BASH_SOURCE")/server.inc"
 
-ENVIRONMENT=${1:-test}
+# shellcheck source=volumes.inc
+. "$(dirname "$BASH_SOURCE")/volumes.inc"
 
-_GO_PIPELINE_COUNTER=-${GO_PIPELINE_COUNTER:-0}
+env=${1:-test}
 
-SERVER_STACKNAME=gocd-svm
-SERVER_STACKNAME=$SERVER_STACKNAME$_GO_PIPELINE_COUNTER
-SERVER_STACKNAME=$SERVER_STACKNAME-$ENVIRONMENT
+gocd_svc="$(getStackname "gocd-svc" "$env")"
+gocd_svm="$(getStackname "gocd-svm" "$env")"
+gocd_vol="$(getStackname "gocd-vol" "$env")"
 
-CLUSTER_STACKNAME=gocd-svc
-CLUSTER_STACKNAME=$CLUSTER_STACKNAME$_GO_PIPELINE_COUNTER
-CLUSTER_STACKNAME=$CLUSTER_STACKNAME-$ENVIRONMENT
-
-destroyServerInstance \
-  "$SERVER_STACKNAME" \
-  "$CLUSTER_STACKNAME"
+destroyCluster  "$gocd_svc" || return $?
+destroyMachine  "$gocd_svm"  || return $?
+destroyVolumes  "$gocd_vol" || return $?

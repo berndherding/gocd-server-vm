@@ -133,7 +133,7 @@ function createVolumesBasedOnLabel() {
   snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go"  "$basedOnLabel") || return $?
   snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib" "$basedOnLabel") || return $?
 
-  createVolumeStack "$stackname" "$snapshotIdEtcGo" "$snapshotIdVarLib"
+  createVolumeStack "$stackname" "$snapshotIdEtcGo" "$snapshotIdVarLib"    || return $?
 
   getVolumeId "$stackname-etc-go"  > "$(dirname "${BASH_SOURCE[0]}")"/target/etcGoVolumeId
   getVolumeId "$stackname-var-lib" > "$(dirname "${BASH_SOURCE[0]}")"/target/varLibVolumeId
@@ -144,7 +144,7 @@ function createVolumesBasedOnLabel() {
 function destroyVolumes() {
   local stackname=$1
 
-  # TODO: if tagged "LIVE", make copies of volumes
+  # TODO: if tagged "LIVE", make copies of volumes or use proper DeletionPolicy
 
 #  destroySnapshotOfVolume "$etcGoVolumeName"  || return $? &
 #  destroySnapshotOfVolume "$varLibVolumeName" || return $? &
