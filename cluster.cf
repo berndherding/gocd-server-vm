@@ -13,7 +13,7 @@
     "GoServerUrl": {
       "Type" : "String"
     },
-    "GithubPemKey" : {
+    "GithubPrivateKey" : {
       "Type" : "String",
       "NoEcho": true
     },
@@ -46,8 +46,6 @@
             "Name": "go-server",
             "Image": { "Ref": "GoCDServerImage" },
             "PortMappings":[
-              { "ContainerPort": 8153, "HostPort": 8153 },
-              { "ContainerPort": 8154, "HostPort": 8154 },
               { "ContainerPort": 8153, "HostPort": 80   },
               { "ContainerPort": 8154, "HostPort": 443  }
             ],
@@ -64,8 +62,8 @@
               }
             ],
             "Environment": [
-              { "Name": "GITHUB_PEM_KEY", "Value": { "Ref": "GithubPemKey" } },
-              { "Name": "RUN_MODE",       "Value": "live" }
+              { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
+              { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } }
             ]
           }
         ],

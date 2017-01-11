@@ -145,6 +145,11 @@ function createCluster() {
   local clusterStackname=$2
   local mapSourceVolumes=$3
 
+#
+# TODO: mapSourceVolumes should per default be dependent of 
+# an existing and populated /etc/go and /var/lib/go-server
+#
+
   clusterName=$(getClusterName "$serverStackname") || return $?
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName)"
@@ -160,7 +165,7 @@ function createCluster() {
     ParameterKey=ClusterName,ParameterValue="$clusterName" \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GoServerUrl,ParameterValue="$goServerUrl" \
-    ParameterKey=GithubPemKey,ParameterValue="$(getGithubPrivateKey)" \
+    ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
     ParameterKey=MapSourceVolumes,ParameterValue="$mapSourceVolumes" \
   || return $ERROR_createCluster_createStack
 

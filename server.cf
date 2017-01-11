@@ -96,17 +96,6 @@
       }
     },
 
-    "IngressSsh": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "22",
-        "ToPort": "22",
-        "IpProtocol": "tcp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
     "IngressHttp": {
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
@@ -123,28 +112,6 @@
       "Properties": {
         "FromPort": "443",
         "ToPort": "443",
-        "IpProtocol": "tcp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
-    "IngressDocker": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "2375",
-        "ToPort": "2376",
-        "IpProtocol": "tcp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
-    "IngressGoServer": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "8153",
-        "ToPort": "8154",
         "IpProtocol": "tcp",
         "CidrIp": "0.0.0.0/0",
         "GroupId": { "Ref": "SecurityGroup" }
