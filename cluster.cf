@@ -10,6 +10,9 @@
     "GoCDServerImage": {
       "Type" : "String"
     },
+    "GoCDAgentImage": {
+      "Type" : "String"
+    },
     "GoServerUrl": {
       "Type" : "String"
     },
@@ -24,7 +27,8 @@
   },
 
   "Conditions" : {
-    "MapSourceVolumes" : { "Fn::Equals": [ { "Ref": "MapSourceVolumes" }, "true" ] }
+    "MapSourceVolumes" : { "Fn::Equals": [ { "Ref": "MapSourceVolumes" }, "true" ] },
+    "WithAgentImage" :  { "Fn::Not" : [{"Fn::Equals" : [{"Ref" : "GoCDAgentImage"},  ""]}] }
   },
 
   "Resources": {
@@ -65,11 +69,35 @@
               { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
               { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } }
             ]
+          },
+          {
+            "Fn::If" : [ 
+              "WithAgentImage",
+              {
+                "Name": "go-agent",
+                "Image": { "Ref": "GoCDAgentImage" },
+                "Memory": 500,
+                "MountPoints": [
+                  {
+                    "ContainerPath": "/var/run/docker.sock",
+                    "SourceVolume":   "var-run-docker-sock"
+                  },
+                ],
+                "Environment": [
+                  { "Name": "AWS_DEFAULT_REGION", "Value": "eu-central-1" },
+                  { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
+                  { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
+                  { "Name": "GO_SERVER", "Value": { "Ref": "GoServerUrl" } }
+                ]
+              },
+              { "Ref" : "AWS::NoValue" }
+            ]
           }
         ],
         "Volumes": [
           { "Host": { "SourcePath": "/xvdb" }, "Name": "etc-go" },
           { "Host": { "SourcePath": "/xvdc" }, "Name": "var-lib-go-server" },
+          { "Host": { "SourcePath": "/var/run/docker.sock" }, "Name": "var-run-docker-sock" }
         ],
         "Family": "go-server"
       }

@@ -155,8 +155,9 @@ function createCluster() {
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName)"
   goServerUrl="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress)"
 
-  # take a chance to override GoCD Server Image
+  # take a chance to override images
   [ -n "$GOCD_SERVER_IMAGE" ] && gocdServerImage="$GOCD_SERVER_IMAGE"
+  [ -n "$GOCD_AGENT_IMAGE"  ] && gocdAgentImage="$GOCD_AGENT_IMAGE"
 
   aws cloudformation create-stack \
   --stack-name "$clusterStackname" \
@@ -164,6 +165,7 @@ function createCluster() {
   --parameters \
     ParameterKey=ClusterName,ParameterValue="$clusterName" \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
+    ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
     ParameterKey=GoServerUrl,ParameterValue="$goServerUrl" \
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
     ParameterKey=MapSourceVolumes,ParameterValue="$mapSourceVolumes" \

@@ -13,5 +13,5 @@ gocd_svm="$(getStackname "gocd-svm" "$env")"
 gocd_vol="$(getStackname "gocd-vol" "$env")"
 
 destroyCluster  "$gocd_svc" || return $?
-destroyMachine  "$gocd_svm"  || return $?
+destroyMachine  "$gocd_svm" || return $?
 destroyVolumes  "$gocd_vol" || return $?
