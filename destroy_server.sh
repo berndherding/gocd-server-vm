@@ -6,12 +6,16 @@
 # shellcheck source=volumes.inc
 . "$(dirname "$BASH_SOURCE")/volumes.inc"
 
-env=${1:-test}
+ENV=${1:-init}
+DESTROY_VOLUMES=${2:-false}
 
-gocd_svc="$(getStackname "gocd-svc" "$env")"
-gocd_svm="$(getStackname "gocd-svm" "$env")"
-gocd_vol="$(getStackname "gocd-vol" "$env")"
+GOCD_SVC="$(getStackname "gocd-svc" "$ENV")"
+GOCD_SVM="$(getStackname "gocd-svm" "$ENV")"
+GOCD_VOL="$(getStackname "gocd-vol" "$ENV")"
 
-destroyCluster  "$gocd_svc" || return $?
-destroyMachine  "$gocd_svm" || return $?
-destroyVolumes  "$gocd_vol" || return $?
+destroyCluster  "$GOCD_SVC" || return $?
+destroyMachine  "$GOCD_SVM" || return $?
+
+[ "$DESTROY_VOLUMES" = "destroy-volumes" ] || return
+
+destroyVolumes  "$GOCD_VOL" || return $?
