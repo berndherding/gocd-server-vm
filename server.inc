@@ -88,7 +88,7 @@ function mountVolume() {
   local mp=$3
 
   # mount script installed via server.cf
-  $SSH "ec2-user@$ip" "sudo /bin/bash /tmp/mountvolume.sh $dev $mp" \
+  $SSH "ec2-user@$ip" "sudo /bin/bash /gocd/mountvolume.sh $dev $mp" \
   || return $ERROR_mountVolume_mountVolume
 }
 
