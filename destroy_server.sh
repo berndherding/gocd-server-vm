@@ -6,27 +6,14 @@
 # shellcheck source=volumes.inc
 . "$(dirname "$BASH_SOURCE")/volumes.inc"
 
-STACK_SUFFIX=${1:-init-0}
+STACK_SUFFIX=${1:-init}
 DESTROY_VOLUMES=${2:-false}
 
 shopt -s extglob
 
-ENV=
-if [ -z "${STACK_SUFFIX//+([0-9])}" ] ; then
-  GO_PIPELINE_COUNTER="$STACK_SUFFIX"
-else
-  ENV=${STACK_SUFFIX##+([0-9])-}
-  if [ -n "$ENV" ] ; then
-    GO_PIPELINE_COUNTER=${STACK_SUFFIX%%$ENV}
-    GO_PIPELINE_COUNTER=${GO_PIPELINE_COUNTER%%-}
-  fi
-fi
-
-#echo "ENV \"$ENV\" GO_PIPELINE_COUNTER \"$GO_PIPELINE_COUNTER\""
-
-GOCD_SVC="$(getStackname "gocd-svc" "$ENV")"
-GOCD_SVM="$(getStackname "gocd-svm" "$ENV")"
-GOCD_VOL="$(getStackname "gocd-vol" "$ENV")"
+GOCD_SVC="$(getStackname "gocd-svc" "$STACK_SUFFIX")"
+GOCD_SVM="$(getStackname "gocd-svm" "$STACK_SUFFIX")"
+GOCD_VOL="$(getStackname "gocd-vol" "$STACK_SUFFIX")"
 
 destroyCluster  "$GOCD_SVC" || exit $?
 destroyMachine  "$GOCD_SVM" || exit $?
