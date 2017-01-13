@@ -126,14 +126,25 @@ function getSnapshotId() {
 
 
 
+function countVolumes() {
+  local volumename=$1
+
+  aws ec2 describe-volumes --filters Name=tag:Name,Values="$volumename" --query 'length(Volumes[*])' || return 2
+}
+
+
+
 function createVolumesBasedOnLabel() {
   local stackname=$1
   local basedOnLabel=$2
 
-  snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go"  "$basedOnLabel") || return $?
-  snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib" "$basedOnLabel") || return $?
+  countEtcGo="$(countVolumes "$stackname-etc-go")" || return $?
 
-  createVolumeStack "$stackname" "$snapshotIdEtcGo" "$snapshotIdVarLib"    || return $?
+  if [ "$countEtcGo" -eq 0 ] ; then
+    snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go"  "$basedOnLabel") || return $?
+    snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib" "$basedOnLabel") || return $?
+    createVolumeStack "$stackname" "$snapshotIdEtcGo" "$snapshotIdVarLib"    || return $?
+  fi
 
   getVolumeId "$stackname-etc-go"  > "$(dirname "${BASH_SOURCE[0]}")"/target/etcGoVolumeId
   getVolumeId "$stackname-var-lib" > "$(dirname "${BASH_SOURCE[0]}")"/target/varLibVolumeId
