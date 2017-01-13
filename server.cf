@@ -52,6 +52,9 @@
 
                 { "Fn::Join": [ "\n",
                   [
+                    "#!/bin/bash -ex",
+                    "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
+
                     "cat <<EOF > /etc/ecs/ecs.config",
                     "ECS_LOGLEVEL=info",
                     "ECS_CLUSTER=$ECS_CLUSTER",
@@ -59,7 +62,7 @@
                     "ECS_ENGINE_AUTH_DATA={\"https://index.docker.io/v1/\":{\"auth\":\"$ECS_AUTH\",\"email\":\"$ECS_EMAIL\"}}",
                     "EOF",
           
-                    "cat <<EOF > /gocd/mountvolume.sh",
+                    "cat <<EOF > /root/mountvolume.sh",
                     "#!/bin/bash",
                     "dev=\\$1 mp=\\$2",
                     "mount | grep \"\\$dev\"",
