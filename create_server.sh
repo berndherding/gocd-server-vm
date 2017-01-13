@@ -14,6 +14,6 @@ gocd_vol="$(getStackname "gocd-vol" "$env")"
 gocd_svm="$(getStackname "gocd-svm" "$env")"
 gocd_svc="$(getStackname "gocd-svc" "$env")"
 
-createVolumesBasedOnLabel "$gocd_vol" "$fromVolumeLabeled" || return $?
-createMachine "$gocd_svm" || return $?
-createCluster "$gocd_svm" "$gocd_svc" "$mapSourceVolumes"  || return $?
+createVolumesBasedOnLabel "$gocd_vol" "$fromVolumeLabeled" || exit $?
+createMachine "$gocd_svm" || exit $?
+createCluster "$gocd_svm" "$gocd_svc" "$mapSourceVolumes"  || exit $?
