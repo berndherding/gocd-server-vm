@@ -156,8 +156,8 @@ function createCluster() {
   goServerUrl="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress)"
 
   # take a chance to override images
-  [ -n "$GOCD_SERVER_IMAGE" ] && gocdServerImage="$GOCD_SERVER_IMAGE"
-  [ -n "$GOCD_AGENT_IMAGE"  ] && gocdAgentImage="$GOCD_AGENT_IMAGE"
+  [ -n "$GOCD_SERVER_IMAGE_TAG" ] && gocdServerImage="$(getDockerHubUsername)/gocd-server:$GOCD_SERVER_IMAGE_TAG"
+  [ -n "$GOCD_AGENT_IMAGE_TAG"  ] && gocdAgentImage="$(getDockerHubUsername)/gocd-agent:$GOCD_AGENT_IMAGE_TAG"
 
   aws cloudformation create-stack \
   --stack-name "$clusterStackname" \
