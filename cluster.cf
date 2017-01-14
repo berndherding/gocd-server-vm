@@ -76,7 +76,7 @@
               {
                 "Name": "go-agent",
                 "Image": { "Ref": "GoCDAgentImage" },
-                "Memory": 500,
+                "Memory": 384,
                 "MountPoints": [
                   {
                     "ContainerPath": "/var/run/docker.sock",
