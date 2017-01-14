@@ -51,7 +51,8 @@
             "Image": { "Ref": "GoCDServerImage" },
             "PortMappings":[
               { "ContainerPort": 8153, "HostPort": 80   },
-              { "ContainerPort": 8154, "HostPort": 443  }
+              { "ContainerPort": 8154, "HostPort": 443  },
+              { "ContainerPort": 8154, "HostPort": 8154 }
             ],
             "Essential": "true",
             "Memory": 1200,

@@ -132,6 +132,17 @@
       }
     },
 
+    "Ingress8154": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "FromPort": "8154",
+        "ToPort": "8154",
+        "IpProtocol": "tcp",
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": { "Ref": "SecurityGroup" }
+      }
+    },
+
     "EgressAll": {
       "Type": "AWS::EC2::SecurityGroupEgress",
       "Properties": {
