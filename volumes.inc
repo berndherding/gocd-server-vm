@@ -71,7 +71,7 @@ function getLabeledVolumeId() {
   local volumeName=$1
   local volumeLabel=$2
 
-  volumeName=$(aws ec2 describe-volumes \
+  volumeId=$(aws ec2 describe-volumes \
     --filters \
       Name=status,Values=available,in-use \
       Name=tag:Stage,Values="$volumeLabel" \
@@ -80,7 +80,7 @@ function getLabeledVolumeId() {
     --out text 2> /dev/null
   ) || return $ERROR_getLabeledVolumeId_describeVolumes
 
-  [ "$volumeName" != "None" ] && echo "$volumeName" || echo ""
+  [ "$volumeId" != "None" ] && echo "$volumeId" || echo ""
 }
 
 
@@ -88,10 +88,8 @@ function getLabeledVolumeId() {
 function createSnapshotFromLabeledVolume() {
   local stackname=$1
   local volumename=$2
-  local label=$3
-
-  labeledVolumeName=$(getLabeledVolumeName "$volumename" "$label")
-  labeledVolumeId=$(getLabeledVolumeId "$volumename" "$label")
+  local labeledVolumeName=$3
+  local labeledVolumeId=$4
 
   json=$(
     aws ec2 create-snapshot \
@@ -158,7 +156,19 @@ function getSnapshotId() {
   local volumename=$2
   local label=$3
 
-  snapshotId=$(createSnapshotFromLabeledVolume "$stackname" "$volumename" "$label") || return $?
+  labeledVolumeName=$(getLabeledVolumeName "$volumename" "$label")
+  labeledVolumeId=$(getLabeledVolumeId "$volumename" "$label")
+
+  local snapshotId
+
+  if [ -n "$labeledVolumeId" ] ; then
+    snapshotId=$(createSnapshotFromLabeledVolume \
+      "$stackname" \
+      "$volumename" \
+      "$labeledVolumeName" \
+      "$labeledVolumeId"
+    ) || return $?
+  fi
 
   # may be undefined
   echo "$snapshotId"
