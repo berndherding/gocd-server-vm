@@ -20,6 +20,55 @@ ERROR_createCluster_waitStack=8
 
 
 
+function getImageId() {
+  if [ -n "$GO_PACKAGE_AMI_REPO_GO_AMI_LABEL" ] ; then
+    echo "$GO_PACKAGE_AMI_REPO_GO_AMI_LABEL"
+  else
+    cat "$(dirname "${BASH_SOURCE[0]}")/../target/imageId"
+  fi
+}
+
+
+
+function getPrivateIpAddress() {
+  local instanceName=$1
+
+  aws ec2 describe-instances \
+  --filters \
+    "Name=tag:Name,Values=$instanceName" \
+    "Name=instance-state-name,Values=running" \
+  --query "Reservations[*].Instances[*].PrivateIpAddress" \
+  --output text
+}
+
+
+
+function getPublicDnsName() {
+  local instanceName=$1
+
+  aws ec2 describe-instances \
+  --filters \
+    "Name=tag:Name,Values=$instanceName" \
+    "Name=instance-state-name,Values=running" \
+  --query "Reservations[*].Instances[*].PublicDnsName" \
+  --output text
+}
+
+
+
+function getPublicIpAddress() {
+  local instanceName=$1
+
+  aws ec2 describe-instances \
+  --filters \
+    "Name=tag:Name,Values=$instanceName" \
+    "Name=instance-state-name,Values=running" \
+  --query "Reservations[*].Instances[*].PublicIpAddress" \
+  --output text
+}
+
+
+
 function createInstance() {
   local serverStackname=$1
 

@@ -3,8 +3,8 @@
 # shellcheck source=volumes.inc
 . "$(dirname "$BASH_SOURCE")/volumes.inc"
 
-env=${1:-test}
+STACK_SUFFIX=${1:-test}
 
-gocd_vol="$(getStackname "gocd-vol" "$env")"
+GOCD_VOL="$(getStackname "gocd-vol" "$STACK_SUFFIX")"
 
-destroyVolumes "$gocd_vol"
+destroyVolumes "$GOCD_VOL"

@@ -3,9 +3,9 @@
 # shellcheck source=volumes.inc
 . "$(dirname "$BASH_SOURCE")/volumes.inc"
 
-env=${1:-test}
+STACK_SUFFIX=${1:-test}
 fromVolumeLabeled=${2:-none}  # "none", "live"
 
-gocd_vol="$(getStackname "gocd-vol" "$env")"
+GOCD_VOL="$(getStackname "gocd-vol" "$STACK_SUFFIX")"
 
-createVolumesBasedOnLabel "$gocd_vol" "$fromVolumeLabeled"
+createVolumesBasedOnLabel "$GOCD_VOL" "$fromVolumeLabeled"
