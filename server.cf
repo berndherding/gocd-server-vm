@@ -32,13 +32,13 @@
     "GoServerUrl": {
       "Type" : "String"
     },
-    "GithubPrivateKey" : {
-      "Type" : "String",
-      "NoEcho": true
-    },
     "MapSourceVolumes": {
       "Type"    : "String",
       "Default" : "true"
+    },
+    "GithubPrivateKey" : {
+      "Type" : "String",
+      "NoEcho": true
     }
   },
 

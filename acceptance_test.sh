@@ -10,7 +10,6 @@ env=test
 
 VOLUMES_STACKNAME="$(getStackname "gocd-vol" "$env")"
 SERVER_STACKNAME="$(getStackname "gocd-svm" "$env")"
-CLUSTER_STACKNAME="$(getStackname "gocd-svc" "$env")"
 
 SHUNIT=$(which shunit)
 
@@ -24,44 +23,16 @@ function testCreateVolumes() {
 
 
 
-function testCreateInstance() {
-  createInstance "$SERVER_STACKNAME"
-  assertEquals "createInstance failed" 0 $?
+function testCreateServer() {
+  createServer "$SERVER_STACKNAME" true
+  assertEquals "createServer failed" 0 $?
 }
 
 
 
-function testMountVolumes() {
-  mountVolumes "$SERVER_STACKNAME"
-  assertEquals "mountVolumes failed" 0 $?
-}
-
-
-
-function testCreateCluster() {
-  createCluster "$SERVER_STACKNAME" "$CLUSTER_STACKNAME" true
-  assertEquals "createCluster failed" 0 $?
-}
-
-
-
-function testDestroyCluster() {
-  destroyCluster "$CLUSTER_STACKNAME"
-  assertEquals "destroyCluster failed" 0 $?
-}
-
-
-
-function testUnmountVolumes() {
-  unmountVolumes "$SERVER_STACKNAME"
-  assertEquals "unmountVolumes failed" 0 $?
-}
-
-
-
-function testDestroyInstance() {
-  destroyInstance "$SERVER_STACKNAME"
-  assertEquals "destroyInstance failed" 0 $?
+function testDestroyServer() {
+  destroyServer "$SERVER_STACKNAME"
+  assertEquals "destroyServer failed" 0 $?
 }
 
 
