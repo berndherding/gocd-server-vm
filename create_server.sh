@@ -12,7 +12,7 @@ mapSourceVolumes=${3:-true}
 
 GOCD_VOL="$(getStackname "gocd-vol" "$STACK_SUFFIX")"
 GOCD_SVM="$(getStackname "gocd-svm" "$STACK_SUFFIX")"
-GOCD_SVC="$(getStackname "gocd-svc" "$STACK_SUFFIX")"
+#GOCD_SVC="$(getStackname "gocd-svc" "$STACK_SUFFIX")"
 
 createVolumesBasedOnLabel "$GOCD_VOL" "$fromVolumeLabeled" || exit $?
 #createMachine "$GOCD_SVM"                                  || exit $?
