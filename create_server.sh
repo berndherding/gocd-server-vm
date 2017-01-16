@@ -15,5 +15,5 @@ GOCD_SVM="$(getStackname "gocd-svm" "$STACK_SUFFIX")"
 GOCD_SVC="$(getStackname "gocd-svc" "$STACK_SUFFIX")"
 
 createVolumesBasedOnLabel "$GOCD_VOL" "$fromVolumeLabeled" || exit $?
-createMachine "$GOCD_SVM"                                  || exit $?
-createCluster "$GOCD_SVM" "$GOCD_SVC" "$mapSourceVolumes"  || exit $?
+#createMachine "$GOCD_SVM"                                  || exit $?
+createCluster "$GOCD_SVM" "$mapSourceVolumes"  || exit $?

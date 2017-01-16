@@ -22,18 +22,41 @@
     },
     "VolumeIdXvdc" : {
       "Type" : "String"
+    },
+    "GoCDServerImage": {
+      "Type" : "String"
+    },
+    "GoCDAgentImage": {
+      "Type" : "String"
+    },
+    "GoServerUrl": {
+      "Type" : "String"
+    },
+    "GithubPrivateKey" : {
+      "Type" : "String",
+      "NoEcho": true
+    },
+    "MapSourceVolumes": {
+      "Type"    : "String",
+      "Default" : "true"
     }
+  },
+
+  "Conditions" : {
+    "MapSourceVolumes" : { "Fn::Equals": [ { "Ref": "MapSourceVolumes" }, "true" ] },
+    "WithAgentImage" :  { "Fn::Not" : [{"Fn::Equals" : [{"Ref" : "GoCDAgentImage"},  ""]}] }
   },
 
   "Resources": {
 
     "Instance": {
       "Type": "AWS::EC2::Instance",
+      "DependsOn": "Cluster",
       "Properties": {
         "AvailabilityZone": "eu-central-1b",
         "IamInstanceProfile": "ecsInstanceRole",
         "ImageId": { "Ref": "ImageId" },
-        "InstanceType": "t2.small",
+        "InstanceType": "t2.medium",
         "KeyName": "gocd",
         "Monitoring": "true",
         "SecurityGroupIds": [ { "Ref": "SecurityGroup" } ],
@@ -44,7 +67,8 @@
           "Fn::Base64": {
             "Fn::Join": [ "",
               [
-                "#!/bin/bash\n",
+                "#!/bin/bash -x\n",
+                "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1\n",
 
                 "export ECS_AUTH=", { "Ref": "EcsAuth" }, "\n",
                 "export ECS_EMAIL=", { "Ref": "EcsEmail" }, "\n",
@@ -52,31 +76,45 @@
 
                 { "Fn::Join": [ "\n",
                   [
-                    "#!/bin/bash -ex",
-                    "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
-
                     "cat <<EOF > /etc/ecs/ecs.config",
                     "ECS_LOGLEVEL=info",
                     "ECS_CLUSTER=$ECS_CLUSTER",
                     "ECS_ENGINE_AUTH_TYPE=dockercfg",
                     "ECS_ENGINE_AUTH_DATA={\"https://index.docker.io/v1/\":{\"auth\":\"$ECS_AUTH\",\"email\":\"$ECS_EMAIL\"}}",
                     "EOF",
-          
-                    "cat <<EOF > /root/mountvolume.sh",
+
+                    "cat <<EOF > /root/mountvolumes.sh",
                     "#!/bin/bash",
-                    "dev=\\$1 mp=\\$2",
-                    "mount | grep \"\\$dev\"",
-                    "if [ \\$? -ne 0 ] ; then",
-                    "  file -s \"\\$dev\" | grep filesystem",
+                    "function mountvolume() {",
+                    "  dev=\\$1 mp=\\$2",
+                    "  mount | grep \"\\$dev\"",
                     "  if [ \\$? -ne 0 ] ; then",
-                    "    mkfs -t ext4 \"\\$dev\"",
+                    "    file -s \"\\$dev\" | grep filesystem",
+                    "    if [ \\$? -ne 0 ] ; then",
+                    "      mkfs -t ext4 \"\\$dev\"",
+                    "    fi",
+                    "    if [ ! -d \"\\$mp\" ] ; then",
+                    "      mkdir \"\\$mp\"",
+                    "    fi",
+                    "    mount \"\\$dev\" \"\\$mp\"",
                     "  fi",
-                    "  if [ ! -d \"\\$mp\" ] ; then",
-                    "    mkdir \"\\$mp\"",
-                    "  fi",
-                    "  mount \"\\$dev\" \"\\$mp\"",
-                    "fi",
-                    "EOF"
+                    "}",
+                    "mountvolume /dev/xvdb /xvdb",
+                    "mountvolume /dev/xvdc /xvdc",
+                    "EOF",
+                    "/bin/bash /root/mountvolumes.sh",
+          
+                    "cat <<EOF > /root/umountvolumes.sh",
+                    "#!/bin/bash",
+                    "umount /xvdc",
+                    "umount /xvdb",
+                    "EOF",
+                    "chmod 755 /root/umountvolumes.sh",
+                    "ln -sf /root/umountvolumes.sh /etc/rc3.d/K05umountvolumes",
+
+                    "stop ecs",
+                    "service docker restart",
+                    "start ecs"
                   ]]
                 }
               ]
@@ -87,7 +125,6 @@
           { "Device" : "/dev/xvdb", "VolumeId" : { "Ref": "VolumeIdXvdb"} },
           { "Device" : "/dev/xvdc", "VolumeId" : { "Ref": "VolumeIdXvdc"} }
         ]
-
       }
     },
 
@@ -154,6 +191,78 @@
 
     "Cluster": {
       "Type": "AWS::ECS::Cluster"
+    },
+
+    "Service": {
+      "Type": "AWS::ECS::Service",
+      "Properties" : {
+        "Cluster": { "Ref": "Cluster" },
+        "DesiredCount": 1,
+        "TaskDefinition" : { "Ref": "TaskDefinition" }
+      }
+    },
+
+    "TaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "DependsOn": "Instance",
+      "Properties" : {
+        "ContainerDefinitions" : [ 
+          {
+            "Name": "go-server",
+            "Image": { "Ref": "GoCDServerImage" },
+            "PortMappings":[
+              { "ContainerPort": 8153, "HostPort": 80   },
+              { "ContainerPort": 8154, "HostPort": 443  },
+              { "ContainerPort": 8154, "HostPort": 8154 }
+            ],
+            "Essential": "true",
+            "Memory": 1280,
+            "MountPoints": [
+              {
+                "ContainerPath": { "Fn::If" : [ "MapSourceVolumes", "/etc/go", "/xvdb" ] },
+                "SourceVolume":   "etc-go"
+              },
+              {
+                "ContainerPath": { "Fn::If" : [ "MapSourceVolumes", "/var/lib/go-server", "/xvdc" ] },
+                "SourceVolume":   "var-lib-go-server"
+              }
+            ],
+            "Environment": [
+              { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
+              { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } }
+            ]
+          },
+          {
+            "Fn::If" : [ 
+              "WithAgentImage",
+              {
+                "Name": "go-agent",
+                "Image": { "Ref": "GoCDAgentImage" },
+                "Memory": 512,
+                "MountPoints": [
+                  {
+                    "ContainerPath": "/var/run/docker.sock",
+                    "SourceVolume":   "var-run-docker-sock"
+                  },
+                ],
+                "Environment": [
+                  { "Name": "AWS_DEFAULT_REGION", "Value": "eu-central-1" },
+                  { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
+                  { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
+                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "Instance", "PublicDnsName" ] } }
+                ]
+              },
+              { "Ref" : "AWS::NoValue" }
+            ]
+          }
+        ],
+        "Volumes": [
+          { "Host": { "SourcePath": "/xvdb" }, "Name": "etc-go" },
+          { "Host": { "SourcePath": "/xvdc" }, "Name": "var-lib-go-server" },
+          { "Host": { "SourcePath": "/var/run/docker.sock" }, "Name": "var-run-docker-sock" }
+        ],
+        "Family": "go-server"
+      }
     }
   },
 

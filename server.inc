@@ -20,16 +20,6 @@ ERROR_createCluster_waitStack=8
 
 
 
-function getImageId() {
-  if [ -n "$GO_PACKAGE_AMI_REPO_GO_AMI_LABEL" ] ; then
-    echo "$GO_PACKAGE_AMI_REPO_GO_AMI_LABEL"
-  else
-    cat "$(dirname "${BASH_SOURCE[0]}")/../target/imageId"
-  fi
-}
-
-
-
 function getPrivateIpAddress() {
   local instanceName=$1
 
@@ -73,7 +63,7 @@ function createInstance() {
   local serverStackname=$1
 
   vpcId=$(getDefaultVpcId)
-  imageId="ami-e012d48f"   # $(getImageId)
+  imageId="ami-e012d48f" #"$(getImageId)"
   etcGoVolumeId="$(cat  "$(dirname "${BASH_SOURCE[0]}")"/target/etcGoVolumeId)"
   varLibVolumeId="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/varLibVolumeId)"
 
@@ -191,15 +181,20 @@ function getClusterName() {
 
 function createCluster() {
   local serverStackname=$1
-  local clusterStackname=$2
-  local mapSourceVolumes=$3
+  local mapSourceVolumes=$2
 
 #
 # TODO: mapSourceVolumes should per default be dependent of 
 # an existing and populated /etc/go and /var/lib/go-server
 #
 
-  clusterName=$(getClusterName "$serverStackname") || return $?
+  vpcId=$(getDefaultVpcId)
+  imageId="$(getImageId)" # "ami-e012d48f" #"$(getImageId)"
+  etcGoVolumeId="$(cat  "$(dirname "${BASH_SOURCE[0]}")"/target/etcGoVolumeId)"
+  varLibVolumeId="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/varLibVolumeId)"
+
+  ecsAuth="$(echo -n "$(getDockerHubUsername):$(getDockerHubPassword)" | base64)"
+  ecsEmail="$(getDockerHubEmail)"
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName)"
   goServerUrl="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress)"
@@ -209,10 +204,15 @@ function createCluster() {
   [ -n "$GOCD_AGENT_IMAGE_TAG"  ] && gocdAgentImage="$(getDockerHubUsername)/gocd-agent:$GOCD_AGENT_IMAGE_TAG"
 
   aws cloudformation create-stack \
-  --stack-name "$clusterStackname" \
-  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/cluster.cf" \
+  --stack-name "$serverStackname" \
+  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/server.cf" \
   --parameters \
-    ParameterKey=ClusterName,ParameterValue="$clusterName" \
+    ParameterKey=VpcId,ParameterValue="$vpcId" \
+    ParameterKey=ImageId,ParameterValue="$imageId" \
+    ParameterKey=EcsAuth,ParameterValue="$ecsAuth" \
+    ParameterKey=EcsEmail,ParameterValue="$ecsEmail" \
+    ParameterKey=VolumeIdXvdb,ParameterValue="$etcGoVolumeId" \
+    ParameterKey=VolumeIdXvdc,ParameterValue="$varLibVolumeId" \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
     ParameterKey=GoServerUrl,ParameterValue="$goServerUrl" \
@@ -221,8 +221,10 @@ function createCluster() {
   || return $ERROR_createCluster_createStack
 
   echo "*** please wait for create-stack to complete. this may take a few minutes."
-  aws cloudformation wait stack-create-complete --stack-name "$clusterStackname" --output text \
+  aws cloudformation wait stack-create-complete --stack-name "$serverStackname" --output text \
   || return $ERROR_createCluster_waitStack
+
+  getPublicIpAddress "$stackname" > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress
 }
 
 
