@@ -11,13 +11,11 @@ DESTROY_VOLUMES=${2:-false}
 
 shopt -s extglob
 
-GOCD_SVC="$(getStackname "gocd-svc" "$STACK_SUFFIX")"
 GOCD_SVM="$(getStackname "gocd-svm" "$STACK_SUFFIX")"
 GOCD_VOL="$(getStackname "gocd-vol" "$STACK_SUFFIX")"
 
-destroyCluster  "$GOCD_SVC" || exit $?
-destroyMachine  "$GOCD_SVM" || exit $?
+destroyServer  "$GOCD_SVM" || exit $?
 
 [ "$DESTROY_VOLUMES" = "destroy-volumes" ] || exit 0
 
-destroyVolumes  "$GOCD_VOL" || exit $?
+destroyVolumes "$GOCD_VOL" || exit $?
