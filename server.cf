@@ -29,9 +29,6 @@
     "GoCDAgentImage": {
       "Type" : "String"
     },
-    "GoServerUrl": {
-      "Type" : "String"
-    },
     "MapSourceVolumes": {
       "Type"    : "String",
       "Default" : "true"
@@ -49,11 +46,38 @@
 
   "Resources": {
 
-    "Instance": {
-      "Type": "AWS::EC2::Instance",
+    "LoadBalancer" : {
+      "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties" : {
+        "AvailabilityZones" : "eu-central-1b",
+        "Listeners" : [
+          {
+            "InstancePort" : "80",
+            "InstanceProtocol" : "HTTP",
+            "LoadBalancerPort" : "443",
+            "Protocol" : "HTTPS"
+          }
+        ]
+      }
+    },
+
+    "AutoScalingGroup": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "AvailabilityZones" : "eu-central-1b",
+        "DesiredCapacity": 1,
+        "LaunchConfigurationName": { "Ref": "LaunchConfiguration" },
+        "LoadBalancerNames": [ { "Ref": "LoadBalancer" } ],
+        "MetricsCollection" : { "Granularity": "1Minute" },
+        "MinSize": "1",
+        "MaxSize": "1"
+      }
+    },
+
+    "LaunchConfiguration": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
       "DependsOn": "Cluster",
       "Properties": {
-        "AvailabilityZone": "eu-central-1b",
         "IamInstanceProfile": "ecsInstanceRole",
         "ImageId": { "Ref": "ImageId" },
         "InstanceType": "t2.medium",
@@ -104,6 +128,10 @@
                     "EOF",
                     "/bin/bash /root/mountvolumes.sh",
           
+                    "stop ecs",
+                    "service docker restart",
+                    "start ecs",
+
                     "cat <<EOF > /root/umountvolumes.sh",
                     "#!/bin/bash",
                     "umount /xvdc",
@@ -112,11 +140,23 @@
                     "chmod 755 /root/umountvolumes.sh",
                     "ln -sf /root/umountvolumes.sh /etc/rc3.d/K05umountvolumes",
 
-                    "stop ecs",
-                    "service docker restart",
-                    "start ecs"
+                    "cat <<EOF > /root/wait_for_gocd_server.sh",
+                    "#!/bin/bash",
+                    "i=0",
+                    "timeout=\\$1",
+                    "while true ; do",
+                    "  [ \\$i -ge \\$timeout ] && exit 1",
+                    "  curl -s -o /dev/null http://localhost && exit 0",
+                    "  i=\\$((i + 5))",
+                    "  sleep 5",
+                    "done",
+                    "EOF\n"
                   ]]
-                }
+                },
+                "/opt/aws/bin/cfn-signal -e $? ",
+                " --stack ", { "Ref": "AWS::StackName" },
+                " --region ", { "Ref" : "AWS::Region" },
+                " --resource AutoScalingGroup"
               ]
             ]
           }
@@ -204,7 +244,7 @@
 
     "TaskDefinition": {
       "Type": "AWS::ECS::TaskDefinition",
-      "DependsOn": "Instance",
+      "DependsOn": "LaunchConfiguration",
       "Properties" : {
         "ContainerDefinitions" : [ 
           {
@@ -243,13 +283,13 @@
                   {
                     "ContainerPath": "/var/run/docker.sock",
                     "SourceVolume":   "var-run-docker-sock"
-                  },
+                  }
                 ],
                 "Environment": [
                   { "Name": "AWS_DEFAULT_REGION", "Value": "eu-central-1" },
                   { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
                   { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
-                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "Instance", "PublicDnsName" ] } }
+                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] } }
                 ]
               },
               { "Ref" : "AWS::NoValue" }
@@ -274,10 +314,10 @@
       "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "Cluster" ] ] } }
     },
 
-    "PublicDnsName": {
-      "Description": "GoCD Server PublicDnsName",
-      "Value": { "Fn::Join": [ "", [ "http://", { "Fn::GetAtt": [ "Instance", "PublicDnsName" ] }, "/" ] ] },
-      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "PublicDnsName" ] ] } }
+    "DNSName": {
+      "Description": "GoCD Server DNS Name",
+      "Value": { "Fn::Join": [ "", [ "http://", { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] }, "/" ] ] },
+      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "DNSName" ] ] } }
     }
   }
 }
