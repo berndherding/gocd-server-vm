@@ -150,7 +150,10 @@
                     "  i=\\$((i + 5))",
                     "  sleep 5",
                     "done",
-                    "EOF\n"
+                    "EOF",
+
+                    "/bin/bash /root/wait_for_gocd_server.sh 300",
+                    "\n"
                   ]]
                 },
                 "/opt/aws/bin/cfn-signal -e $? ",
