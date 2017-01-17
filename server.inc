@@ -9,8 +9,9 @@
 # shellcheck source=/dev/null
 . "$(dirname "${BASH_SOURCE[0]}")/inc/keys.inc"
 
-ERROR_createServer_createStack=7
-ERROR_createServer_waitStack=8
+ERROR_createServer_createStack=1
+ERROR_createServer_waitStack=2
+ERROR_getPublicIpAddress=3
 
 
 
@@ -22,7 +23,7 @@ function getPublicIpAddress() {
     "Name=tag:Name,Values=$stackname" \
     "Name=instance-state-name,Values=running" \
   --query "Reservations[*].Instances[*].PublicIpAddress" \
-  --output text
+  --output text || return $ERROR_getPublicIpAddress
 }
 
 
@@ -45,7 +46,6 @@ function createServer() {
   ecsEmail="$(getDockerHubEmail)"
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName)"
-  goServerUrl="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress)"
 
   # take a chance to override images
   [ -n "$GOCD_SERVER_IMAGE_TAG" ] && gocdServerImage="$(getDockerHubUsername)/gocd-server:$GOCD_SERVER_IMAGE_TAG"
@@ -63,7 +63,6 @@ function createServer() {
     ParameterKey=VolumeIdXvdc,ParameterValue="$varLibVolumeId" \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
-    ParameterKey=GoServerUrl,ParameterValue="$goServerUrl" \
     ParameterKey=MapSourceVolumes,ParameterValue="$mapSourceVolumes" \
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
   || return $ERROR_createServer_createStack
@@ -72,7 +71,8 @@ function createServer() {
   aws cloudformation wait stack-create-complete --stack-name "$stackname" --output text \
   || return $ERROR_createServer_waitStack
 
-  getPublicIpAddress "$stackname" > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress
+  getPublicIpAddress "$stackname" > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress \
+  || return $?
 }
 
 
