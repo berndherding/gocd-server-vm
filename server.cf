@@ -173,6 +173,61 @@
       }
     },
 
+    "Ingress2377": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "FromPort": "2377",
+        "ToPort": "2377",
+        "IpProtocol": "tcp",
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": { "Ref": "SecurityGroup" }
+      }
+    },
+
+    "Ingress4789": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "FromPort": "4789",
+        "ToPort": "4789",
+        "IpProtocol": "tcp",
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": { "Ref": "SecurityGroup" }
+      }
+    },
+
+    "Ingress4789": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "FromPort": "4789",
+        "ToPort": "4789",
+        "IpProtocol": "udp",
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": { "Ref": "SecurityGroup" }
+      }
+    },
+
+    "Ingress7946": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "FromPort": "7946",
+        "ToPort": "7946",
+        "IpProtocol": "tcp",
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": { "Ref": "SecurityGroup" }
+      }
+    },
+
+    "Ingress7946": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "FromPort": "7946",
+        "ToPort": "7946",
+        "IpProtocol": "udp",
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": { "Ref": "SecurityGroup" }
+      }
+    },
+
     "Ingress8154": {
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
