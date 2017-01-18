@@ -17,10 +17,7 @@
     "EcsEmail" : {
       "Type" : "String"
     },
-    "VolumeIdXvdb" : {
-      "Type": "String"
-    },
-    "VolumeIdXvdc" : {
+    "VolumeStack" : {
       "Type": "String"
     },
     "GoCDServerImage": {
@@ -39,8 +36,8 @@
   },
 
   "Conditions" : {
-    "MapSourceVolumes" : { "Fn::Equals": [ { "Ref": "MapSourceVolumes" }, "map-source-volumes" ] },
-    "WithAgentImage" :  { "Fn::Not" : [{"Fn::Equals" : [{"Ref" : "GoCDAgentImage"},  ""]}] }
+    "MapSourceVolumes" : { "Fn::Equals": [ { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:Status" } }, "POPULATED" ] },
+    "WithAgentImage" : { "Fn::Not" : [ { "Fn::Equals" : [ { "Ref" : "GoCDAgentImage" },  ""] } ] }
   },
 
   "Resources": {
@@ -158,8 +155,8 @@
           }
         },
         "Volumes" : [
-          { "Device" : "/dev/xvdb", "VolumeId" : { "Ref": "VolumeIdXvdb"} },
-          { "Device" : "/dev/xvdc", "VolumeId" : { "Ref": "VolumeIdXvdc"} }
+          { "Device" : "/dev/xvdb", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:EtcGo" } } },
+          { "Device" : "/dev/xvdc", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:VarLib" } } }
         ]
       }
     },
