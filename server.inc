@@ -40,11 +40,11 @@ function createServer() {
 
   vpcId=$(getDefaultVpcId)
   imageId="$(getImageId)" # "ami-e012d48f"
-  etcGoVolumeId="$(cat  "$(dirname "${BASH_SOURCE[0]}")"/target/etcGoVolumeId)"
-  varLibVolumeId="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/varLibVolumeId)"
 
   ecsAuth="$(echo -n "$(getDockerHubUsername):$(getDockerHubPassword)" | base64)"
   ecsEmail="$(getDockerHubEmail)"
+
+  volumeStack="${stackname//svm/vol}"
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName 2> /dev/null)"
   gocdAgentImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName 2> /dev/null)"
@@ -61,8 +61,7 @@ function createServer() {
     ParameterKey=ImageId,ParameterValue="$imageId" \
     ParameterKey=EcsAuth,ParameterValue="$ecsAuth" \
     ParameterKey=EcsEmail,ParameterValue="$ecsEmail" \
-    ParameterKey=VolumeIdXvdb,ParameterValue="$etcGoVolumeId" \
-    ParameterKey=VolumeIdXvdc,ParameterValue="$varLibVolumeId" \
+    ParameterKey=VolumeStack,ParameterValue="$volumeStack" \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
     ParameterKey=MapSourceVolumes,ParameterValue="$mapSourceVolumes" \
