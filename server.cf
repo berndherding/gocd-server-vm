@@ -61,12 +61,6 @@
     "Instance": {
       "Type": "AWS::EC2::Instance",
       "DependsOn": "Cluster",
-      "CreationPolicy": {
-        "ResourceSignal": {
-          "Count": "1",
-          "Timeout": "PT15M"
-        }
-      },
       "Properties": {
         "IamInstanceProfile": "ecsInstanceRole",
         "ImageId": { "Ref": "ImageId" },
@@ -128,28 +122,9 @@
                     "umount /xvdb",
                     "EOF",
                     "chmod 755 /root/umountvolumes.sh",
-                    "ln -sf /root/umountvolumes.sh /etc/rc3.d/K05umountvolumes",
-
-                    "cat <<EOF > /root/wait_for_gocd_server.sh",
-                    "#!/bin/bash",
-                    "i=0",
-                    "timeout=\\$1",
-                    "while true ; do",
-                    "  [ \\$i -ge \\$timeout ] && echo \"1/\\$i\" && exit 1",
-                    "  curl -s -o /dev/null http://localhost && echo \"0/\\$i\" && exit 0",
-                    "  i=\\$((i + 5))",
-                    "  sleep 5",
-                    "done",
-                    "EOF",
-
-                    "/bin/bash /root/wait_for_gocd_server.sh 600",
-                    "\n"
+                    "ln -sf /root/umountvolumes.sh /etc/rc3.d/K05umountvolumes"
                   ]]
-                },
-                "/usr/local/bin/cfn-signal -e $? ",
-                " --stack ", { "Ref": "AWS::StackName" },
-                " --region ", { "Ref" : "AWS::Region" },
-                " --resource Instance"
+                }
               ]
             ]
           }
