@@ -167,17 +167,6 @@
       }
     },
 
-    "IngressSsh": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "22",
-        "ToPort": "22",
-        "IpProtocol": "tcp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
     "IngressHttp": {
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
