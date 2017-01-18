@@ -64,6 +64,12 @@
     "Instance": {
       "Type": "AWS::EC2::Instance",
       "DependsOn": "Cluster",
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": "1",
+          "Timeout": "PT15M"
+        }
+      },
       "Properties": {
         "IamInstanceProfile": "ecsInstanceRole",
         "ImageId": { "Ref": "ImageId" },
