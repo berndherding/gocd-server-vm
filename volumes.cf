@@ -62,7 +62,7 @@
 
     "Status": {
       "Description": "Status of Volumes, empty or populated",
-      "Value": { "Fn::If": [ "CreateEtcGoFromSnapshot", "EMPTY", "POPULATED" ] },
+      "Value": { "Fn::If": [ "CreateEtcGoFromSnapshot", "POPULATED", "EMPTY" ] },
       "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "Status" ] ] } }
     }
   }
