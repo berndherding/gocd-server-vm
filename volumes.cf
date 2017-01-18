@@ -44,5 +44,26 @@
         "AvailabilityZone" : "eu-central-1b"
       }
     }
+  },
+
+  "Outputs": {
+
+    "EtcGo": {
+      "Description": "Volume Id of etc-go",
+      "Value": { "Ref": "VolumeEtcGo" },
+      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "EtcGo" ] ] } }
+    },
+
+    "VarLib": {
+      "Description": "Volume Id of var-lib",
+      "Value": { "Ref": "VolumeVarLib" },
+      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "VarLib" ] ] } }
+    },
+
+    "Status": {
+      "Description": "Status of Volumes, empty or populated",
+      "Value": { "Fn::If": [ "CreateEtcGoFromSnapshot", "EMPTY", "POPULATED" ] },
+      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "Status" ] ] } }
+    }
   }
 }
