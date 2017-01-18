@@ -49,33 +49,21 @@
     "LoadBalancer" : {
       "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
       "Properties" : {
-        "AvailabilityZones" : "eu-central-1b",
+        "AvailabilityZones" : [ "eu-central-1b" ],
+        "Instances" : [ { "Ref": "Instance" } ],
         "Listeners" : [
           {
             "InstancePort" : "80",
             "InstanceProtocol" : "HTTP",
-            "LoadBalancerPort" : "443",
-            "Protocol" : "HTTPS"
+            "LoadBalancerPort" : "80",
+            "Protocol" : "HTTP"
           }
         ]
       }
     },
 
-    "AutoScalingGroup": {
-      "Type": "AWS::AutoScaling::AutoScalingGroup",
-      "Properties": {
-        "AvailabilityZones" : "eu-central-1b",
-        "DesiredCapacity": 1,
-        "LaunchConfigurationName": { "Ref": "LaunchConfiguration" },
-        "LoadBalancerNames": [ { "Ref": "LoadBalancer" } ],
-        "MetricsCollection" : { "Granularity": "1Minute" },
-        "MinSize": "1",
-        "MaxSize": "1"
-      }
-    },
-
-    "LaunchConfiguration": {
-      "Type": "AWS::AutoScaling::LaunchConfiguration",
+    "Instance": {
+      "Type": "AWS::EC2::Instance",
       "DependsOn": "Cluster",
       "Properties": {
         "IamInstanceProfile": "ecsInstanceRole",
@@ -145,8 +133,8 @@
                     "i=0",
                     "timeout=\\$1",
                     "while true ; do",
-                    "  [ \\$i -ge \\$timeout ] && exit 1",
-                    "  curl -s -o /dev/null http://localhost && exit 0",
+                    "  [ \\$i -ge \\$timeout ] && echo \"1/\\$i\" && exit 1",
+                    "  curl -s -o /dev/null http://localhost && echo \"0/\\$i\" && exit 0",
                     "  i=\\$((i + 5))",
                     "  sleep 5",
                     "done",
@@ -156,10 +144,10 @@
                     "\n"
                   ]]
                 },
-                "/opt/aws/bin/cfn-signal -e $? ",
+                "/usr/local/bin/cfn-signal -e $? ",
                 " --stack ", { "Ref": "AWS::StackName" },
                 " --region ", { "Ref" : "AWS::Region" },
-                " --resource AutoScalingGroup"
+                " --resource Instance"
               ]
             ]
           }
@@ -247,7 +235,7 @@
 
     "TaskDefinition": {
       "Type": "AWS::ECS::TaskDefinition",
-      "DependsOn": "LaunchConfiguration",
+      "DependsOn": "Instance",
       "Properties" : {
         "ContainerDefinitions" : [ 
           {
@@ -292,7 +280,7 @@
                   { "Name": "AWS_DEFAULT_REGION", "Value": "eu-central-1" },
                   { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
                   { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
-                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] } }
+                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "Instance", "PublicDnsName" ] } }
                 ]
               },
               { "Ref" : "AWS::NoValue" }
@@ -310,12 +298,6 @@
   },
 
   "Outputs": {
-
-    "Cluster": {
-      "Description": "GoCD Server ECS Cluster",
-      "Value": { "Ref": "Cluster" },
-      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "Cluster" ] ] } }
-    },
 
     "DNSName": {
       "Description": "GoCD Server DNS Name",
