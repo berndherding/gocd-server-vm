@@ -4,36 +4,36 @@
   "AWSTemplateFormatVersion": "2010-09-09",
 
   "Parameters" : {
-    "VpcId" : {
-      "Type" : "String"
+    "VpcId": {
+      "Type": "String"
     },
     "ImageId" : {
-      "Type" : "String"
+      "Type": "String"
     },
     "EcsAuth" : {
-      "Type" : "String",
+      "Type": "String",
       "NoEcho": true
     },
     "EcsEmail" : {
       "Type" : "String"
     },
     "VolumeIdXvdb" : {
-      "Type" : "String"
+      "Type": "String"
     },
     "VolumeIdXvdc" : {
-      "Type" : "String"
+      "Type": "String"
     },
     "GoCDServerImage": {
-      "Type" : "String"
+      "Type": "String"
     },
     "GoCDAgentImage": {
-      "Type" : "String"
+      "Type": "String"
     },
     "MapSourceVolumes": {
-      "Type"    : "String",
+      "Type": "String"
     },
     "GithubPrivateKey" : {
-      "Type" : "String",
+      "Type": "String",
       "NoEcho": true
     }
   },
