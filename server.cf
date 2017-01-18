@@ -142,7 +142,7 @@
                     "done",
                     "EOF",
 
-                    "/bin/bash /root/wait_for_gocd_server.sh 300",
+                    "/bin/bash /root/wait_for_gocd_server.sh 600",
                     "\n"
                   ]]
                 },
