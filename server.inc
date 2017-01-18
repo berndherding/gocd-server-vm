@@ -33,8 +33,8 @@ function createServer() {
 
   local mapSourceVolumes="map-source-volumes"
 
-  # check if /etc/go is empty. if so, do NOT mapSourceVolumes
-  if [ "$(ls -1 "/etc/go")" = "lost+found" ] ; then
+  # check if /xvdb is empty. if so, do NOT mapSourceVolumes
+  if [ "$(ls -1 "/xvdb")" = "lost+found" ] ; then
     mapSourceVolumes="do-not-map-source-volumes"
   fi
 
