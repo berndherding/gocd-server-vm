@@ -36,7 +36,7 @@
   },
 
   "Conditions" : {
-    "MapSourceVolumes" : { "Fn::Equals": [ { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:Status" } }, "POPULATED" ] },
+    "MapSourceVolumes" : { "Fn::Equals": [ { "Ref": "MapSourceVolumes" }, "map-source-volumes" ] },
     "WithAgentImage" : { "Fn::Not" : [ { "Fn::Equals" : [ { "Ref" : "GoCDAgentImage" },  ""] } ] }
   },
 

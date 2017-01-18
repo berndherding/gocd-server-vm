@@ -30,13 +30,7 @@ function getPublicIpAddress() {
 
 function createServer() {
   local stackname=$1
-
-  local mapSourceVolumes="map-source-volumes"
-
-  # check if /xvdb is empty. if so, do NOT mapSourceVolumes
-  if [ "$(ls -1 "/xvdb")" = "lost+found" ] ; then
-    mapSourceVolumes="do-not-map-source-volumes"
-  fi
+  local mapSourceVolumes=$2
 
   vpcId=$(getDefaultVpcId)
   imageId="$(getImageId)" # "ami-e012d48f"

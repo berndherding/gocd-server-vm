@@ -16,8 +16,8 @@ SHUNIT=$(which shunit)
 
 
 function testCreateVolumes() {
-  # "NONE" label should not exist -> new, empty volume created
-  createVolumesBasedOnLabel "$VOLUMES_STACKNAME" "NONE"
+  # label "no-label" should not exist -> new, empty volume created
+  createVolumesBasedOnLabel "$VOLUMES_STACKNAME" "no-label"
   assertEquals "createVolumes failed" 0 $?
 }
 
@@ -25,8 +25,15 @@ function testCreateVolumes() {
 
 # volumes are empty
 function testCreateServer() {
-  createServer "$SERVER_STACKNAME"
+  createServer "$SERVER_STACKNAME" "do-not-map-source-volumes"
   assertEquals "createServer failed" 0 $?
+}
+
+
+
+function testSleep() {
+  sleep 180
+  assertEquals "sleep" 0 $?
 }
 
 
