@@ -31,13 +31,6 @@ function testCreateServer() {
 
 
 
-function testSleep() {
-  sleep 180
-  assertEquals "sleep" 0 $?
-}
-
-
-
 function testDestroyServer() {
   destroyServer "$SERVER_STACKNAME"
   assertEquals "destroyServer failed" 0 $?
