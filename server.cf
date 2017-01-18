@@ -31,7 +31,6 @@
     },
     "MapSourceVolumes": {
       "Type"    : "String",
-      "Default" : "true"
     },
     "GithubPrivateKey" : {
       "Type" : "String",
@@ -40,7 +39,7 @@
   },
 
   "Conditions" : {
-    "MapSourceVolumes" : { "Fn::Equals": [ { "Ref": "MapSourceVolumes" }, "true" ] },
+    "MapSourceVolumes" : { "Fn::Equals": [ { "Ref": "MapSourceVolumes" }, "map-source-volumes" ] },
     "WithAgentImage" :  { "Fn::Not" : [{"Fn::Equals" : [{"Ref" : "GoCDAgentImage"},  ""]}] }
   },
 

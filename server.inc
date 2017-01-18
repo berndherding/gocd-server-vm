@@ -30,12 +30,13 @@ function getPublicIpAddress() {
 
 function createServer() {
   local stackname=$1
-  local mapSourceVolumes=$2
 
-#
-# TODO: mapSourceVolumes should per default be dependent of 
-# an existing and populated /etc/go and /var/lib/go-server
-#
+  local mapSourceVolumes="map-source-volumes"
+
+  # check if /etc/go is empty. if so, do NOT mapSourceVolumes
+  if [ "$(ls -1 "/etc/go")" = "lost+found" ] ; then
+    mapSourceVolumes="do-not-map-source-volumes"
+  fi
 
   vpcId=$(getDefaultVpcId)
   imageId="$(getImageId)" # "ami-e012d48f"

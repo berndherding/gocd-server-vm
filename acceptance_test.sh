@@ -23,8 +23,9 @@ function testCreateVolumes() {
 
 
 
+# volumes are empty
 function testCreateServer() {
-  createServer "$SERVER_STACKNAME" true
+  createServer "$SERVER_STACKNAME"
   assertEquals "createServer failed" 0 $?
 }
 
