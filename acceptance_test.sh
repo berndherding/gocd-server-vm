@@ -17,7 +17,7 @@ SHUNIT=$(which shunit)
 
 function testCreateVolumes() {
   # label "no-label" should not exist -> new, empty volume created
-  createVolumesBasedOnLabel "$VOLUMES_STACKNAME" "no-label"
+  createVolumes "$VOLUMES_STACKNAME" "no-label"
   assertEquals "createVolumes failed" 0 $?
 }
 
