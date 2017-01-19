@@ -32,12 +32,16 @@
     "GithubPrivateKey" : {
       "Type": "String",
       "NoEcho": true
+    },
+    "CertificateArn": {
+      "Type": "String"
     }
   },
 
   "Conditions" : {
     "MapHostVolumes" : { "Fn::Equals": [ { "Ref": "MapHostVolumes" }, "map-host-volumes" ] },
-    "WithAgentImage" : { "Fn::Not" : [ { "Fn::Equals" : [ { "Ref" : "GoCDAgentImage" },  ""] } ] }
+    "WithAgentImage" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "GoCDAgentImage" },  ""] } ] },
+    "HasCertificate" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "CertificateArn" }, "" ] } ] }
   },
 
   "Resources": {
@@ -59,9 +63,10 @@
             "InstanceProtocol" : "HTTP",
             "LoadBalancerPort" : "443",
             "Protocol" : "HTTPS",
-            "SSLCertificateId" : "arn:aws:acm:eu-central-1:615296438369:certificate/d87c8e4b-3a37-45b9-a319-fcea23895a99"
+            "SSLCertificateId" : { "Fn::If" : [ "HasCertificate", { "Ref": "CertificateArn" }, { "Ref" : "AWS::NoValue" } ] } 
           }
-        ]
+        ],
+        "SecurityGroups": [ { "Ref": "ELBSecurityGroup" } ]
       }
     },
 
@@ -74,7 +79,7 @@
         "InstanceType": "t2.medium",
         "KeyName": "gocd",
         "Monitoring": "true",
-        "SecurityGroupIds": [ { "Ref": "SecurityGroup" } ],
+        "SecurityGroupIds": [ { "Ref": "AppSecurityGroup" } ],
         "Tags": [
           { "Key": "Name", "Value": { "Ref": "AWS::StackName" } }
         ],
@@ -143,108 +148,39 @@
       }
     },
 
-    "SecurityGroup": {
+    "ELBSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
-        "GroupDescription": "Go Server",
-        "VpcId": { "Ref" : "VpcId" }
+        "GroupDescription": "GoCD ELB",
+        "VpcId": { "Ref" : "VpcId" },
+        "SecurityGroupIngress": [
+          { "FromPort": "80",   "ToPort": "80",   "IpProtocol": "tcp", "CidrIp": "0.0.0.0/0" },
+          { "FromPort": "443",  "ToPort": "443",  "IpProtocol": "tcp", "CidrIp": "0.0.0.0/0" }
+        ],
+        "SecurityGroupEgress": [
+          { "IpProtocol": "-1", "CidrIp": "0.0.0.0/0" }
+        ]
       }
     },
 
-    "IngressHttp": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
+    "AppSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
-        "FromPort": "80",
-        "ToPort": "80",
-        "IpProtocol": "tcp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
-    "IngressHttps": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "443",
-        "ToPort": "443",
-        "IpProtocol": "tcp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
-    "Ingress2377": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "2377",
-        "ToPort": "2377",
-        "IpProtocol": "tcp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
-    "Ingress4789": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "4789",
-        "ToPort": "4789",
-        "IpProtocol": "tcp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
-    "Ingress4789": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "4789",
-        "ToPort": "4789",
-        "IpProtocol": "udp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
-    "Ingress7946": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "7946",
-        "ToPort": "7946",
-        "IpProtocol": "tcp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
-    "Ingress7946": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "7946",
-        "ToPort": "7946",
-        "IpProtocol": "udp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
-    "Ingress8154": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "FromPort": "8154",
-        "ToPort": "8154",
-        "IpProtocol": "tcp",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
-      }
-    },
-
-    "EgressAll": {
-      "Type": "AWS::EC2::SecurityGroupEgress",
-      "Properties": {
-        "IpProtocol": "-1",
-        "CidrIp": "0.0.0.0/0",
-        "GroupId": { "Ref": "SecurityGroup" }
+        "GroupDescription": "GoCD Server",
+        "VpcId": { "Ref" : "VpcId" },
+        "SecurityGroupIngress": [
+          { "FromPort": "80",   "ToPort": "80",   "IpProtocol": "tcp", "SourceSecurityGroupId": { "Ref": "ELBSecurityGroup"} },
+          { "FromPort": "443",  "ToPort": "443",  "IpProtocol": "tcp", "SourceSecurityGroupId": { "Ref": "ELBSecurityGroup"} },
+          { "FromPort": "2377", "ToPort": "2377", "IpProtocol": "tcp", "CidrIp": "0.0.0.0/0" },
+          { "FromPort": "4789", "ToPort": "4789", "IpProtocol": "tcp", "CidrIp": "0.0.0.0/0" },
+          { "FromPort": "4789", "ToPort": "4789", "IpProtocol": "udp", "CidrIp": "0.0.0.0/0" },
+          { "FromPort": "7946", "ToPort": "7946", "IpProtocol": "tcp", "CidrIp": "0.0.0.0/0" },
+          { "FromPort": "7946", "ToPort": "7946", "IpProtocol": "udp", "CidrIp": "0.0.0.0/0" },
+          { "FromPort": "8154", "ToPort": "8154", "IpProtocol": "tcp", "CidrIp": "0.0.0.0/0" }
+        ],
+        "SecurityGroupEgress": [
+          { "IpProtocol": "-1", "CidrIp": "0.0.0.0/0" }
+        ]
       }
     },
 
