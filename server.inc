@@ -12,6 +12,7 @@
 ERROR_createServer_createStack=1
 ERROR_createServer_waitStack=2
 ERROR_getPublicIpAddress=3
+ERROR_getCertificateArn=4
 
 
 
@@ -28,9 +29,22 @@ function getPublicIpAddress() {
 
 
 
+function getCertificateArn() {
+  local fqdn=$1
+
+  aws acm list-certificates \
+  | jq -r '.CertificateSummaryList[] | select(.DomainName=="'"$fqdn"'").CertificateArn' \
+  || return $ERROR_getCertificateArn
+}
+
+
+
 function createServer() {
   local stackname=$1
   local mapHostVolumes=$2
+
+  echo
+  echo "createServer for $stackname, $mapHostVolumes"
 
   vpcId=$(getDefaultVpcId)
   imageId="$(getImageId)" # "ami-e012d48f"
@@ -39,6 +53,7 @@ function createServer() {
   ecsEmail="$(getDockerHubEmail)"
 
   volumeStack="${stackname//svm/vol}"
+  echo "* using $volumeStack associated volume stack"
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName 2> /dev/null)"
   gocdAgentImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName 2> /dev/null)"
@@ -47,6 +62,12 @@ function createServer() {
   [ -n "$GOCD_SERVER_IMAGE_TAG" ] && gocdServerImage="$(getDockerHubUsername)/gocd-server:$GOCD_SERVER_IMAGE_TAG"
   [ -n "$GOCD_AGENT_IMAGE_TAG"  ] && gocdAgentImage="$(getDockerHubUsername)/gocd-agent:$GOCD_AGENT_IMAGE_TAG"
 
+  echo "* GoCD server image: $gocdServerImage"
+  echo "* GoCD agent image:  $gocdAgentImage"
+
+  [ -n "$GOCD_DOMAINNAME" ] && certificateArn="$(getCertificateArn "$GOCD_DOMAINNAME")"
+
+  echo "* creating new server stack $stackname"
   aws cloudformation create-stack \
   --stack-name "$stackname" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/server.cf" \
@@ -60,14 +81,16 @@ function createServer() {
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
     ParameterKey=MapHostVolumes,ParameterValue="$mapHostVolumes" \
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
-  || return $ERROR_createServer_createStack
+    ParameterKey=CertificateArn,ParameterValue="$certificateArn" \
+  > /dev/null || return $ERROR_createServer_createStack
 
-  echo "*** please wait for create-stack to complete. this may take a few minutes."
+  echo "* waiting for $stackname to complete. this may take a few minutes."
   aws cloudformation wait stack-create-complete --stack-name "$stackname" --output text \
   || return $ERROR_createServer_waitStack
 
-  getPublicIpAddress "$stackname" > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress \
-  || return $?
+  publicIpAddress="$(getPublicIpAddress "$stackname")" || return $?
+  echo "* propagating public IP address $publicIpAddress as artifact in target/goServerPublicIpAddress"
+  echo "$publicIpAddress" > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress
 }
 
 
