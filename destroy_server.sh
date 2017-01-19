@@ -7,7 +7,7 @@
 . "$(dirname "$BASH_SOURCE")/volumes.inc"
 
 STACK_SUFFIX=${1:-init}
-DESTROY_VOLUMES=${2:-false}
+DESTROY_VOLUMES=${2:-do-not-destroy-volumes}
 
 shopt -s extglob
 
