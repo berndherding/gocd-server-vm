@@ -13,8 +13,8 @@ ERROR_getVolumeId_describeVolumes=1
 ERROR_setSnapshotName_createTags=2
 ERROR_getLabeledVolumeName_describeVolumes=3
 ERROR_getLabeledVolumeId_describeVolumes=4
-ERROR_createSnapshotFromVolume_createSnapshot=5
-ERROR_createSnapshotFromVolume_waitSnapshot=6
+ERROR_createSnapshot_createSnapshot=5
+ERROR_createSnapshot_waitSnapshot=6
 ERROR_createVolumeStack_createStack=7
 ERROR_createVolumeStack_waitStack=8
 ERROR_destroySnapshotOfVolume_describeVolumes=9
@@ -49,15 +49,11 @@ function setSnapshotName() {
 
 
 function getLabeledVolumeName() {
-  local volumeName=$1
-  local volumeLabel=$2
+  local volumeId=$1
 
   # shellcheck disable=SC2016
   volumeName=$(aws ec2 describe-volumes \
-    --filters \
-      Name=status,Values=available,in-use \
-      Name=tag:Stage,Values="$volumeLabel" \
-      Name=tag:Name,Values="*$volumeName*" \
+    --filters Name=volume-id,Values="$volumeId" \
     --query 'Volumes[0].Tags[?Key==`Name`]|[0].Value' \
     --out text 2> /dev/null
   ) || return $ERROR_getLabeledVolumeName_describeVolumes
@@ -85,28 +81,34 @@ function getLabeledVolumeId() {
 
 
 
-function createSnapshotFromVolume() {
+function createSnapshot() {
   local stackname=$1
   local volumename=$2
-  local labeledVolumeName=$3
-  local labeledVolumeId=$4
+  local labeledVolumeId=$3
+
+  local labeledVolumeName
+
+  labeledVolumeName=$(getLabeledVolumeName "$labeledVolumeId")
+  echo "* found $labeledVolumeName labeled \"$label\" ($labeledVolumeId). creating snapshot."
+
+  unset snapshotId
 
   json=$(
     aws ec2 create-snapshot \
     --volume-id "$labeledVolumeId" \
     --description "based on $labeledVolumeName ($labeledVolumeId)"
-  ) || return $ERROR_createSnapshotFromVolume_createSnapshot
+  ) || return $ERROR_createSnapshot_createSnapshot
 
   # stupid, i know. just to not add a dependency to jq.
   snapshotId=${json##*SnapshotId\": \"}
   snapshotId=${snapshotId%%\"*}
 
   aws ec2 wait snapshot-completed --snapshot-ids "$snapshotId" \
-  || return $ERROR_createSnapshotFromVolume_waitSnapshot
+  || return $ERROR_createSnapshot_waitSnapshot
 
-  setSnapshotName "$snapshotId" "$stackname-$volumename"
+  setSnapshotName "$snapshotId" "$stackname-$volumename" || return $?
 
-  echo "$snapshotId"
+  echo "* snapshotId for $volumename:  $snapshotId"
 }
 
 
@@ -116,7 +118,6 @@ function createVolumeStack() {
   local snapshotIdEtcGo=$2
   local snapshotIdVarLib=$3
 
-  # NOTE inconsistency: <region> defined here and in vol.cf. -> TODO template needs parameter
   # NOTE remember to re-activate "DeletionPolicy" : "Snapshot" in vol.cf per parameter
 
   aws cloudformation create-stack \
@@ -125,9 +126,9 @@ function createVolumeStack() {
   --parameters \
     ParameterKey=SnapshotIdEtcGo,ParameterValue="$snapshotIdEtcGo" \
     ParameterKey=SnapshotIdVarLib,ParameterValue="$snapshotIdVarLib" \
-  || return $ERROR_createVolumeStack_createStack
+  > /dev/null || return $ERROR_createVolumeStack_createStack
 
-  echo "please wait for stack $stackname to complete. this may take a few minutes."
+  echo "* waiting for $stackname to complete. this may take a few minutes."
   aws cloudformation wait stack-create-complete --stack-name "$stackname" --output text \
   || return $ERROR_createVolumeStack_waitStack
 }
@@ -151,31 +152,6 @@ function destroySnapshotOfVolume() {
 
 
 
-function getSnapshotId() {
-  local stackname=$1 
-  local volumename=$2
-  local label=$3
-
-  labeledVolumeName=$(getLabeledVolumeName "$volumename" "$label")
-  labeledVolumeId=$(getLabeledVolumeId "$volumename" "$label")
-
-  local snapshotId
-
-  if [ -n "$labeledVolumeId" ] ; then
-    snapshotId=$(createSnapshotFromVolume \
-      "$stackname" \
-      "$volumename" \
-      "$labeledVolumeName" \
-      "$labeledVolumeId"
-    ) || return $?
-  fi
-
-  # may be undefined
-  echo "$snapshotId"
-}
-
-
-
 function countVolumes() {
   local volumename=$1
 
@@ -189,16 +165,42 @@ function createVolumes() {
   local stackname=$1
   local label=$2
 
+  echo
+  echo "createVolumes for $stackname based on label $label"
+
   count="$(countVolumes "$stackname-etc-go")" || return $?
 
   if [ "$count" -eq 0 ] ; then
-    snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go"  "$label")     || return $?
-    snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib" "$label")     || return $?
-    createVolumeStack "$stackname" "$snapshotIdEtcGo" "$snapshotIdVarLib" || return $?
+    echo "* no existing volumes. creating new ones."
+
+    local origEtcGo snapEtcGo
+
+    origEtcGo=$(getLabeledVolumeId "etc-go" "$label")
+
+    if [ -n "$origEtcGo" ] ; then
+      createSnapshot "$stackname" "etc-go" "$origEtcGo"       || return $?
+      snapEtcGo="$snapshotId"
+    fi
+
+    origVarLib=$(getLabeledVolumeId "var-lib" "$label")
+
+    if [ -n "$origVarLib" ] ; then
+      createSnapshot "$stackname" "var-lib" "$origVarLib"     || return $?
+      snapVarLib="$snapshotId"
+    fi
+
+    echo "* creating new volume stack $stackname"
+    createVolumeStack "$stackname" "$snapEtcGo" "$snapVarLib" || return $?
+
+  else
+    echo "* volumes for $stackname already exist. skipping."
   fi
 
-  getVolumeId "$stackname-etc-go"  > "$(dirname "${BASH_SOURCE[0]}")"/target/etcGoVolumeId
-  getVolumeId "$stackname-var-lib" > "$(dirname "${BASH_SOURCE[0]}")"/target/varLibVolumeId
+  volumeIdEtcGo="$(getVolumeId "$stackname-etc-go")"
+  echo "* volumeId for etc-go:  $volumeIdEtcGo"
+
+  volumeIdVarLib="$(getVolumeId "$stackname-var-lib")"
+  echo "* volumeId for var-lib: $volumeIdVarLib"
 }
 
 
