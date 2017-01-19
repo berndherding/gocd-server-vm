@@ -30,7 +30,7 @@ function getPublicIpAddress() {
 
 function createServer() {
   local stackname=$1
-  local mapSourceVolumes=$2
+  local mapHostVolumes=$2
 
   vpcId=$(getDefaultVpcId)
   imageId="$(getImageId)" # "ami-e012d48f"
@@ -58,7 +58,7 @@ function createServer() {
     ParameterKey=VolumeStack,ParameterValue="$volumeStack" \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
-    ParameterKey=MapSourceVolumes,ParameterValue="$mapSourceVolumes" \
+    ParameterKey=MapHostVolumes,ParameterValue="$mapHostVolumes" \
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
   || return $ERROR_createServer_createStack
 

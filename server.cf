@@ -26,7 +26,7 @@
     "GoCDAgentImage": {
       "Type": "String"
     },
-    "MapSourceVolumes": {
+    "MapHostVolumes": {
       "Type": "String"
     },
     "GithubPrivateKey" : {
@@ -36,7 +36,7 @@
   },
 
   "Conditions" : {
-    "MapSourceVolumes" : { "Fn::Equals": [ { "Ref": "MapSourceVolumes" }, "map-source-volumes" ] },
+    "MapHostVolumes" : { "Fn::Equals": [ { "Ref": "MapHostVolumes" }, "map-host-volumes" ] },
     "WithAgentImage" : { "Fn::Not" : [ { "Fn::Equals" : [ { "Ref" : "GoCDAgentImage" },  ""] } ] }
   },
 
@@ -278,11 +278,11 @@
             "Memory": 1280,
             "MountPoints": [
               {
-                "ContainerPath": { "Fn::If" : [ "MapSourceVolumes", "/etc/go", "/xvdb" ] },
+                "ContainerPath": { "Fn::If" : [ "MapHostVolumes", "/etc/go", "/xvdb" ] },
                 "SourceVolume":   "etc-go"
               },
               {
-                "ContainerPath": { "Fn::If" : [ "MapSourceVolumes", "/var/lib/go-server", "/xvdc" ] },
+                "ContainerPath": { "Fn::If" : [ "MapHostVolumes", "/var/lib/go-server", "/xvdc" ] },
                 "SourceVolume":   "var-lib-go-server"
               }
             ],

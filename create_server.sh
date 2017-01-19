@@ -7,11 +7,12 @@
 . "$(dirname "$BASH_SOURCE")/volumes.inc"
 
 STACK_SUFFIX=${1:-init}
-fromVolumeLabeled=${2:-live}   # "none", "live"
-mapSourceVolumes=${3:-map-source-volumes}
+
+fromVolumeLabel=${2:-live}                 # "none", "live"
+mapHostVolumes=${3:-map-host-volumes}
 
 GOCD_VOL="$(getStackname "gocd-vol" "$STACK_SUFFIX")"
 GOCD_SVM="$(getStackname "gocd-svm" "$STACK_SUFFIX")"
 
-createVolumesBasedOnLabel "$GOCD_VOL" "$fromVolumeLabeled" || exit $?
-createServer              "$GOCD_SVM" "$mapSourceVolumes"  || exit $?
+createVolumes "$GOCD_VOL" "$fromVolumeLabel" || exit $?
+createServer  "$GOCD_SVM" "$mapHostVolumes"  || exit $?

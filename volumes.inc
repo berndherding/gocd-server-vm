@@ -13,8 +13,8 @@ ERROR_getVolumeId_describeVolumes=1
 ERROR_setSnapshotName_createTags=2
 ERROR_getLabeledVolumeName_describeVolumes=3
 ERROR_getLabeledVolumeId_describeVolumes=4
-ERROR_createSnapshotFromLabeledVolume_createSnapshot=5
-ERROR_createSnapshotFromLabeledVolume_waitSnapshot=6
+ERROR_createSnapshotFromVolume_createSnapshot=5
+ERROR_createSnapshotFromVolume_waitSnapshot=6
 ERROR_createVolumeStack_createStack=7
 ERROR_createVolumeStack_waitStack=8
 ERROR_destroySnapshotOfVolume_describeVolumes=9
@@ -85,7 +85,7 @@ function getLabeledVolumeId() {
 
 
 
-function createSnapshotFromLabeledVolume() {
+function createSnapshotFromVolume() {
   local stackname=$1
   local volumename=$2
   local labeledVolumeName=$3
@@ -95,14 +95,14 @@ function createSnapshotFromLabeledVolume() {
     aws ec2 create-snapshot \
     --volume-id "$labeledVolumeId" \
     --description "based on $labeledVolumeName ($labeledVolumeId)"
-  ) || return $ERROR_createSnapshotFromLabeledVolume_createSnapshot
+  ) || return $ERROR_createSnapshotFromVolume_createSnapshot
 
   # stupid, i know. just to not add a dependency to jq.
   snapshotId=${json##*SnapshotId\": \"}
   snapshotId=${snapshotId%%\"*}
 
   aws ec2 wait snapshot-completed --snapshot-ids "$snapshotId" \
-  || return $ERROR_createSnapshotFromLabeledVolume_waitSnapshot
+  || return $ERROR_createSnapshotFromVolume_waitSnapshot
 
   setSnapshotName "$snapshotId" "$stackname-$volumename"
 
@@ -162,7 +162,7 @@ function getSnapshotId() {
   local snapshotId
 
   if [ -n "$labeledVolumeId" ] ; then
-    snapshotId=$(createSnapshotFromLabeledVolume \
+    snapshotId=$(createSnapshotFromVolume \
       "$stackname" \
       "$volumename" \
       "$labeledVolumeName" \
@@ -185,13 +185,13 @@ function countVolumes() {
 
 
 
-function createVolumesBasedOnLabel() {
+function createVolumes() {
   local stackname=$1
   local label=$2
 
-  countEtcGo="$(countVolumes "$stackname-etc-go")" || return $?
+  count="$(countVolumes "$stackname-etc-go")" || return $?
 
-  if [ "$countEtcGo" -eq 0 ] ; then
+  if [ "$count" -eq 0 ] ; then
     snapshotIdEtcGo=$(getSnapshotId  "$stackname" "etc-go"  "$label")     || return $?
     snapshotIdVarLib=$(getSnapshotId "$stackname" "var-lib" "$label")     || return $?
     createVolumeStack "$stackname" "$snapshotIdEtcGo" "$snapshotIdVarLib" || return $?
