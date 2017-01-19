@@ -58,13 +58,13 @@
             "LoadBalancerPort" : "80",
             "Protocol" : "HTTP"
           },
-          {
+          { "Fn::If" : [ "HasCertificate", {
             "InstancePort" : "80",
             "InstanceProtocol" : "HTTP",
             "LoadBalancerPort" : "443",
             "Protocol" : "HTTPS",
-            "SSLCertificateId" : { "Fn::If" : [ "HasCertificate", { "Ref": "CertificateArn" }, { "Ref" : "AWS::NoValue" } ] } 
-          }
+            "SSLCertificateId" : { "Ref": "CertificateArn" }
+          }, { "Ref" : "AWS::NoValue" } ] } 
         ],
         "SecurityGroups": [ { "Ref": "ELBSecurityGroup" } ]
       }
