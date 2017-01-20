@@ -166,7 +166,7 @@ function createVolumes() {
   local label=$2
 
   echo
-  echo "createVolumes for $stackname based on label $label"
+  echo "createVolumes for $stackname based on label \"$label\""
 
   count="$(countVolumes "$stackname-etc-go")" || return $?
 
