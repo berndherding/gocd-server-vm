@@ -89,7 +89,7 @@ function createServer() {
   || return $ERROR_createServer_waitStack
 
   publicIpAddress="$(getPublicIpAddress "$stackname")" || return $?
-  echo "* propagating public IP address $publicIpAddress as artifact in target/goServerPublicIpAddress"
+  echo "* public IP: $publicIpAddress"
   echo "$publicIpAddress" > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress
 }
 
