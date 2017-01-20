@@ -70,15 +70,28 @@
       }
     },
 
-    "WaitHandle" : {
+    "WaitOnMountHandle" : {
       "Type" : "AWS::CloudFormation::WaitConditionHandle"
     },
 
-    "WaitCondition" : {
+    "WaitOnMountCondition" : {
       "Type" : "AWS::CloudFormation::WaitCondition",
       "DependsOn" : "Instance",
       "Properties" : {
-        "Handle" : { "Ref" : "WaitHandle" },
+        "Handle" : { "Ref" : "WaitOnMountHandle" },
+        "Timeout" : "300"
+      }
+    },
+
+    "WaitOnServiceHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+    },
+
+    "WaitOnServiceCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "Instance",
+      "Properties" : {
+        "Handle" : { "Ref" : "WaitOnServiceHandle" },
         "Timeout" : "300"
       }
     },
@@ -109,18 +122,20 @@
 
                 "export STACK=", { "Ref": "AWS::StackName" }, "\n",
                 "export REGION=", { "Ref": "AWS::Region" }, "\n",
-                "export WAITHANDLE=\"", { "Ref": "WaitHandle" }, "\"\n",
+
+                "export WAIT_ON_MOUNT=\"", { "Ref": "WaitOnMountHandle" }, "\"\n",
+                "export WAIT_ON_SERVICE=\"", { "Ref": "WaitOnServiceHandle" }, "\"\n",
 
                 { "Fn::Join": [ "\n",
                   [
-                    "cat <<EOF > /etc/ecs/ecs.config",
+                    "date; cat <<EOF > /etc/ecs/ecs.config",
                     "ECS_LOGLEVEL=info",
                     "ECS_CLUSTER=$ECS_CLUSTER",
                     "ECS_ENGINE_AUTH_TYPE=dockercfg",
                     "ECS_ENGINE_AUTH_DATA={\"https://index.docker.io/v1/\":{\"auth\":\"$ECS_AUTH\",\"email\":\"$ECS_EMAIL\"}}",
                     "EOF",
 
-                    "cat <<EOF > /root/mountvolumes.sh",
+                    "date; cat <<EOF > /root/mountvolumes.sh",
                     "#!/bin/bash",
                     "function mountvolume() {",
                     "  dev=\\$1 mp=\\$2",
@@ -139,15 +154,15 @@
                     "mountvolume /dev/xvdb /xvdb",
                     "mountvolume /dev/xvdc /xvdc",
                     "EOF",
-                    "/bin/bash /root/mountvolumes.sh",
+                    "date; /bin/bash /root/mountvolumes.sh",
           
-                    "stop ecs",
-                    "service docker restart",
-                    "start ecs",
+                    "date; stop ecs",
+                    "date; service docker restart",
+                    "date; start ecs",
 
-                    "/usr/local/bin/cfn-signal -e 0 -r \"volumes mounted, ecs restarted.\" \"$WAITHANDLE\"", 
+                    "date; /usr/local/bin/cfn-signal -e 0 -r \"volumes mounted, ecs restarted.\" \"$WAIT_ON_MOUNT\"", 
 
-                    "cat <<EOF > /root/umountvolumes.sh",
+                    "date; cat <<EOF > /root/umountvolumes.sh",
                     "#!/bin/bash",
                     "umount /xvdc",
                     "umount /xvdb",
@@ -155,25 +170,21 @@
                     "chmod 755 /root/umountvolumes.sh",
                     "ln -sf /root/umountvolumes.sh /etc/rc3.d/K05umountvolumes",
 
-                    "cat <<EOF > /root/wait_for_gocd_server.sh",
+                    "date; cat <<EOF > /root/wait_for_gocd_server.sh",
                     "#!/bin/bash",
                     "i=0",
                     "timeout=\\$1",
-                    "function sig() {", 
-                    "  /usr/local/bin/cfn-signal -e \\$1 --stack $STACK --region $REGION --resource Instance",
-                    "  echo exit code \\$1 after \\$2s",
-                    "  exit \\$1",
-                    "}",
                     "while true ; do",
-                    "  [ \\$i -ge \\$timeout ] && sig 1 \\$i",
-                    "  curl -s -o /dev/null http://localhost && sig 0 \\$i",
+                    "  [ \\$i -ge \\$timeout ] && exit 1",
+                    "  curl -s -o /dev/null && exit 0",
                     "  i=\\$((i + 5))",
                     "  sleep 5",
                     "done",
                     "EOF",
 
-                    "date; sleep 300; date",
-                    "#/bin/bash /root/wait_for_gocd_server.sh 600 &"
+                    "date; /bin/bash /root/wait_for_gocd_server.sh 300",
+
+                    "date; /usr/local/bin/cfn-signal -e $? \"$WAIT_ON_SERVICE\""
                   ]]
                 }
               ]
@@ -238,7 +249,7 @@
 
     "TaskDefinition": {
       "Type": "AWS::ECS::TaskDefinition",
-      "DependsOn": "WaitCondition",
+      "DependsOn": "WaitOnMountCondition",
       "Properties" : {
         "ContainerDefinitions" : [ 
           {
