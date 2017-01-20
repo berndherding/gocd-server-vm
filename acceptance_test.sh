@@ -25,7 +25,7 @@ function testCreateVolumes() {
 
 # volumes are empty
 function testCreateServer() {
-  createServer "$SERVER_STACKNAME" "do-not-map-source-volumes"
+  createServer "$SERVER_STACKNAME" "do-not-map-host-volumes"
   assertEquals "createServer failed" 0 $?
 }
 
