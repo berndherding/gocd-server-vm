@@ -70,6 +70,19 @@
       }
     },
 
+    "WaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+    },
+
+    "WaitCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "Instance",
+      "Properties" : {
+        "Handle" : { "Ref" : "WaitHandle" },
+        "Timeout" : "300"
+      }
+    },
+
     "Instance": {
       "Type": "AWS::EC2::Instance",
       "DependsOn": "Cluster",
@@ -93,6 +106,10 @@
                 "export ECS_AUTH=", { "Ref": "EcsAuth" }, "\n",
                 "export ECS_EMAIL=", { "Ref": "EcsEmail" }, "\n",
                 "export ECS_CLUSTER=", { "Ref": "Cluster" }, "\n",
+
+                "export STACK=", { "Ref": "AWS::StackName" }, "\n",
+                "export REGION=", { "Ref": "AWS::Region" }, "\n",
+                "export WAITHANDLE=", { "Ref": "WaitHandle" }, "\n",
 
                 { "Fn::Join": [ "\n",
                   [
@@ -128,13 +145,35 @@
                     "service docker restart",
                     "start ecs",
 
+                    "/usr/local/bin/cfn-signal -e 0 -r \"volumes mounted, ecs restarted.\" $WAITHANDLE", 
+
                     "cat <<EOF > /root/umountvolumes.sh",
                     "#!/bin/bash",
                     "umount /xvdc",
                     "umount /xvdb",
                     "EOF",
                     "chmod 755 /root/umountvolumes.sh",
-                    "ln -sf /root/umountvolumes.sh /etc/rc3.d/K05umountvolumes"
+                    "ln -sf /root/umountvolumes.sh /etc/rc3.d/K05umountvolumes",
+
+                    "cat <<EOF > /root/wait_for_gocd_server.sh",
+                    "#!/bin/bash",
+                    "i=0",
+                    "timeout=\\$1",
+                    "function sig() {", 
+                    "  /usr/local/bin/cfn-signal -e \\$1 --stack $STACK --region $REGION --resource Instance",
+                    "  echo exit code \\$1 after \\$2s",
+                    "  exit \\$1",
+                    "}",
+                    "while true ; do",
+                    "  [ \\$i -ge \\$timeout ] && sig 1 \\$i",
+                    "  curl -s -o /dev/null http://localhost && sig 0 \\$i",
+                    "  i=\\$((i + 5))",
+                    "  sleep 5",
+                    "done",
+                    "EOF",
+
+                    "date; sleep 300; date",
+                    "#/bin/bash /root/wait_for_gocd_server.sh 600 &"
                   ]]
                 }
               ]
@@ -199,7 +238,6 @@
 
     "TaskDefinition": {
       "Type": "AWS::ECS::TaskDefinition",
-      "DependsOn": "Instance",
       "Properties" : {
         "ContainerDefinitions" : [ 
           {
