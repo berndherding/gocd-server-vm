@@ -4,38 +4,16 @@
   "AWSTemplateFormatVersion": "2010-09-09",
 
   "Parameters" : {
-    "VpcId": {
-      "Type": "String"
-    },
-    "ImageId" : {
-      "Type": "String"
-    },
-    "EcsAuth" : {
-      "Type": "String",
-      "NoEcho": true
-    },
-    "EcsEmail" : {
-      "Type" : "String"
-    },
-    "VolumeStack" : {
-      "Type": "String"
-    },
-    "GoCDServerImage": {
-      "Type": "String"
-    },
-    "GoCDAgentImage": {
-      "Type": "String"
-    },
-    "MapHostVolumes": {
-      "Type": "String"
-    },
-    "GithubPrivateKey" : {
-      "Type": "String",
-      "NoEcho": true
-    },
-    "CertificateArn": {
-      "Type": "String"
-    }
+    "VpcId":            { "Type": "String" },
+    "ImageId":          { "Type": "String" },
+    "EcsAuth":          { "Type": "String", "NoEcho": true },
+    "EcsEmail":         { "Type": "String" },
+    "VolumeStack":      { "Type": "String" },
+    "GoCDServerImage":  { "Type": "String" },
+    "GoCDAgentImage":   { "Type": "String" },
+    "MapHostVolumes":   { "Type": "String" },
+    "GithubPrivateKey": { "Type": "String", "NoEcho": true },
+    "CertificateArn":   { "Type": "String" }
   },
 
   "Conditions" : {
@@ -138,6 +116,8 @@
                   "ecs:StartTelemetrySession",
                   "ecs:Submit*",
                   "ecs:UpdateService",
+                  "iam:CreateRole",
+                  "iam:DeleteRole",
                   "logs:CreateLogStream",
                   "logs:PutLogEvents",
                   "s3:ListBucket",
