@@ -69,6 +69,7 @@ function createServer() {
 
   echo "* creating new server stack $stackname"
   aws cloudformation create-stack \
+  --capabilities CAPABILITY_IAM \
   --stack-name "$stackname" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/server.cf" \
   --parameters \
