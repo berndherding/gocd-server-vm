@@ -109,7 +109,7 @@
 
                 "export STACK=", { "Ref": "AWS::StackName" }, "\n",
                 "export REGION=", { "Ref": "AWS::Region" }, "\n",
-                "export WAITHANDLE=", { "Ref": "WaitHandle" }, "\n",
+                "export WAITHANDLE=\"", { "Ref": "WaitHandle" }, "\"\n",
 
                 { "Fn::Join": [ "\n",
                   [
@@ -145,7 +145,7 @@
                     "service docker restart",
                     "start ecs",
 
-                    "/usr/local/bin/cfn-signal -e 0 -r \"volumes mounted, ecs restarted.\" $WAITHANDLE", 
+                    "/usr/local/bin/cfn-signal -e 0 -r \"volumes mounted, ecs restarted.\" \"$WAITHANDLE\"", 
 
                     "cat <<EOF > /root/umountvolumes.sh",
                     "#!/bin/bash",
@@ -238,6 +238,7 @@
 
     "TaskDefinition": {
       "Type": "AWS::ECS::TaskDefinition",
+      "DependsOn": "WaitCondition",
       "Properties" : {
         "ContainerDefinitions" : [ 
           {
