@@ -12,7 +12,8 @@
     "GoCDServerImage":  { "Type": "String" },
     "GoCDAgentImage":   { "Type": "String" },
     "GithubPrivateKey": { "Type": "String", "NoEcho": true },
-    "CertificateArn":   { "Type": "String" }
+    "CertificateArn":   { "Type": "String" },
+    "AdminPassword":    { "Type": "String", "NoEcho": true }
   },
 
   "Conditions" : {
@@ -250,7 +251,8 @@
             ],
             "Environment": [
               { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
-              { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } }
+              { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
+              { "Name": "ADMIN_PASSWORD", "Value": { "Ref": "AdminPassword" } }
             ]
           },
           {
@@ -291,8 +293,14 @@
 
     "DNSName": {
       "Description": "GoCD Server DNS Name",
-      "Value": { "Fn::Join": [ "", [ "http://", { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] }, "/" ] ] },
+      "Value": { "Fn::Join": [ "", [ "https://", { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] }, "/" ] ] },
       "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "DNSName" ] ] } }
-    }
+    },
+
+    "AdminPasswort": {
+      "Description": "GoCD Server Admin Password",
+      "Value": { "Ref": "AdminPassword" },
+      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "AdminPassword" ] ] } }
+    },
   }
 }
