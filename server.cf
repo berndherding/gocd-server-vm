@@ -16,7 +16,6 @@
   },
 
   "Conditions" : {
-    "MapHostVolumes" : { "Fn::Equals": [ { "Fn::ImportValue": { "Fn::Sub" : "${VolumeStack}:status" } }, "populated" ] },
     "WithAgentImage" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "GoCDAgentImage" }, "" ] } ] },
     "HasCertificate" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "CertificateArn" }, "" ] } ] }
   },
@@ -169,8 +168,8 @@
           }
         },
         "Volumes" : [
-          { "Device" : "/dev/xvdb", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:EtcGo" } } },
-          { "Device" : "/dev/xvdc", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:VarLib" } } }
+          { "Device" : "/dev/xvdb", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:vol-id-etc-go" } } },
+          { "Device" : "/dev/xvdc", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:vol-id-var-lib" } } }
         ]
       }
     },
@@ -241,11 +240,11 @@
             "Memory": 1280,
             "MountPoints": [
               {
-                "ContainerPath": { "Fn::If" : [ "MapHostVolumes", "/etc/go", "/xvdb" ] },
+                "ContainerPath": { "Fn::ImportValue": { "Fn::Sub": "${VolumeStack}:mountpoint-etc-go" } },
                 "SourceVolume":   "etc-go"
               },
               {
-                "ContainerPath": { "Fn::If" : [ "MapHostVolumes", "/var/lib/go-server", "/xvdc" ] },
+                "ContainerPath": { "Fn::ImportValue": { "Fn::Sub": "${VolumeStack}:mountpoint-var-lib" } },
                 "SourceVolume":   "var-lib-go-server"
               }
             ],
