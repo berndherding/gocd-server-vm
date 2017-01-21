@@ -13,7 +13,6 @@ ERROR_createServer_createStack=1
 ERROR_createServer_waitStack=2
 ERROR_getPublicIpAddress=3
 ERROR_getCertificateArn=4
-ERROR_createServer_listRoles=5
 
 
 
@@ -68,12 +67,8 @@ function createServer() {
 
   [ -n "$GOCD_DOMAINNAME" ] && certificateArn="$(getCertificateArn "$GOCD_DOMAINNAME")"
 
-  hasRole="$(aws iam list-roles --query 'length(Roles[?RoleName==`gocdEcsInstanceRole`])')" \
-  || return $ERROR_createServer_listRoles
-
   echo "* creating new server stack $stackname"
   aws cloudformation create-stack \
-  --capabilities CAPABILITY_NAMED_IAM \
   --stack-name "$stackname" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/server.cf" \
   --parameters \
@@ -87,7 +82,6 @@ function createServer() {
     ParameterKey=MapHostVolumes,ParameterValue="$mapHostVolumes" \
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
     ParameterKey=CertificateArn,ParameterValue="$certificateArn" \
-    ParameterKey=HasRole,ParameterValue="$hasRole" \
   > /dev/null || return $ERROR_createServer_createStack
 
   echo "* waiting for $stackname to complete. this may take a few minutes."
