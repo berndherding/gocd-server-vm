@@ -64,7 +64,12 @@ function createServer() {
   echo "* GoCD server image: $gocdServerImage"
   echo "* GoCD agent image:  $gocdAgentImage"
 
-  [ -n "$GOCD_DOMAINNAME" ] && certificateArn="$(getCertificateArn "$GOCD_DOMAINNAME")"
+  [ -n "$GOCD_URL" ] && certificateArn="$(getCertificateArn "$GOCD_URL")"
+
+  if [ "$KEEP_GOCD_ADMIN_PASSWORD" != "true" ] ; then 
+    echo "* creating GoCD Admin OTP"
+    gocdAdminOTP="$(openssl rand -base64 12)"
+  fi
 
   echo "* creating new server stack $stackname"
   aws cloudformation create-stack \
@@ -80,6 +85,7 @@ function createServer() {
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
     ParameterKey=CertificateArn,ParameterValue="$certificateArn" \
+    ParameterKey=GoCDAdminOTP,ParameterValue="$gocdAdminOTP" \
   > /dev/null || return $ERROR_createServer_createStack
 
   echo "* waiting for $stackname to complete. this may take a few minutes."
