@@ -13,13 +13,15 @@
     "GoCDAgentImage":   { "Type": "String" },
     "MapHostVolumes":   { "Type": "String" },
     "GithubPrivateKey": { "Type": "String", "NoEcho": true },
-    "CertificateArn":   { "Type": "String" }
+    "CertificateArn":   { "Type": "String" },
+    "HasRole":          { "Type": "Number" }
   },
 
   "Conditions" : {
     "MapHostVolumes" : { "Fn::Equals": [ { "Ref": "MapHostVolumes" }, "map-host-volumes" ] },
     "WithAgentImage" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "GoCDAgentImage" },  ""] } ] },
-    "HasCertificate" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "CertificateArn" }, "" ] } ] }
+    "HasCertificate" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "CertificateArn" }, "" ] } ] },
+    "HasRole" :        { "Fn::Equals": [ { "Ref": "HasRole" }, 1 ] }
   },
 
   "Resources": {
@@ -76,7 +78,7 @@
 
     "Role": {
       "Type": "AWS::IAM::Role",
-      "Properties": {
+      "Properties": { "Fn::If": [ "HasRole", { "Ref": "AWS::NoValue" }, {
         "AssumeRolePolicyDocument": {
           "Version": "2008-10-17",
           "Statement": [
@@ -88,6 +90,7 @@
             }
           ]
         },
+        "RoleName": "gocdEcsInstanceRole",
         "ManagedPolicyArns" : [ "arn:aws:iam::aws:policy/AmazonEC2FullAccess" ],
         "Path": "/",
         "Policies": [ {
@@ -116,8 +119,6 @@
                   "ecs:StartTelemetrySession",
                   "ecs:Submit*",
                   "ecs:UpdateService",
-                  "iam:CreateRole",
-                  "iam:DeleteRole",
                   "logs:CreateLogStream",
                   "logs:PutLogEvents",
                   "s3:ListBucket",
@@ -128,20 +129,20 @@
               },
               {
                 "Action": "iam:PassRole",
-                "Resource": "arn:aws:iam::615296438369:role/ecsInstanceRole",
+                "Resource": "arn:aws:iam::615296438369:role/gocdEcsInstanceRole",
                 "Effect": "Allow"
               }
             ]
           }
         } ]
-      }
+      } ] }
     },
 
     "Instance": {
       "Type": "AWS::EC2::Instance",
       "DependsOn": "Cluster",
       "Properties": {
-        "IamInstanceProfile": { "Ref": "Role" },
+        "IamInstanceProfile": { "Fn::If": [ "HasRole", "gocdEcsInstanceRole", { "Ref": "Role" } ] },
         "ImageId": { "Ref": "ImageId" },
         "InstanceType": "t2.medium",
         "KeyName": "gocd",
