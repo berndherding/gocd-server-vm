@@ -58,6 +58,12 @@
       "Description": "Volume Id of var-lib",
       "Value": { "Ref": "VolumeVarLib" },
       "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "VarLib" ] ] } }
+    },
+
+    "Status": {
+      "Description": "Status (empty or populated)",
+      "Value": { "Fn::If": [ "CreateEtcGoFromSnapshot", "populated", "empty" ] },
+      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "status" ] ] } }
     }
   }
 }
