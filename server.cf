@@ -11,14 +11,13 @@
     "VolumeStack":      { "Type": "String" },
     "GoCDServerImage":  { "Type": "String" },
     "GoCDAgentImage":   { "Type": "String" },
-    "MapHostVolumes":   { "Type": "String" },
     "GithubPrivateKey": { "Type": "String", "NoEcho": true },
     "CertificateArn":   { "Type": "String" }
   },
 
   "Conditions" : {
-    "MapHostVolumes" : { "Fn::Equals": [ { "Ref": "MapHostVolumes" }, "map-host-volumes" ] },
-    "WithAgentImage" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "GoCDAgentImage" },  ""] } ] },
+    "MapHostVolumes" : { "Fn::Equals": [ { "Fn::ImportValue": { "Fn::Sub" : "${VolumeStack}:status" } }, "populated" ] },
+    "WithAgentImage" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "GoCDAgentImage" }, "" ] } ] },
     "HasCertificate" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "CertificateArn" }, "" ] } ] }
   },
 

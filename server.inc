@@ -41,10 +41,9 @@ function getCertificateArn() {
 
 function createServer() {
   local stackname=$1
-  local mapHostVolumes=$2
 
   echo
-  echo "createServer for $stackname, $mapHostVolumes"
+  echo "createServer for $stackname"
 
   vpcId=$(getDefaultVpcId)
   imageId="$(getImageId)" # "ami-e012d48f"
@@ -56,7 +55,7 @@ function createServer() {
   echo "* using $volumeStack associated volume stack"
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName 2> /dev/null)"
-  gocdAgentImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName 2> /dev/null)"
+  gocdAgentImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName   2> /dev/null)"
 
   # take a chance to override images
   [ -n "$GOCD_SERVER_IMAGE_TAG" ] && gocdServerImage="$(getDockerHubUsername)/gocd-server:$GOCD_SERVER_IMAGE_TAG"
@@ -79,7 +78,6 @@ function createServer() {
     ParameterKey=VolumeStack,ParameterValue="$volumeStack" \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
-    ParameterKey=MapHostVolumes,ParameterValue="$mapHostVolumes" \
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
     ParameterKey=CertificateArn,ParameterValue="$certificateArn" \
   > /dev/null || return $ERROR_createServer_createStack
