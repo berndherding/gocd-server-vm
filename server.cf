@@ -142,7 +142,7 @@
       "Type": "AWS::EC2::Instance",
       "DependsOn": "Cluster",
       "Properties": {
-        "IamInstanceProfile": { "Fn::If": [ "HasRole", "gocdEcsInstanceRole", { "Ref": "Role" } ] },
+        "IamInstanceProfile": "gocdEcsInstanceRole",
         "ImageId": { "Ref": "ImageId" },
         "InstanceType": "t2.medium",
         "KeyName": "gocd",
@@ -277,7 +277,8 @@
     },
 
     "Cluster": {
-      "Type": "AWS::ECS::Cluster"
+      "Type": "AWS::ECS::Cluster",
+      "DependsOn": "Role"
     },
 
     "Service": {
