@@ -13,7 +13,7 @@
     "GoCDAgentImage":   { "Type": "String" },
     "GithubPrivateKey": { "Type": "String", "NoEcho": true },
     "CertificateArn":   { "Type": "String" },
-    "AdminPassword":    { "Type": "String", "NoEcho": true }
+    "GoCDAdminOTP":     { "Type": "String", "NoEcho": true }
   },
 
   "Conditions" : {
@@ -252,7 +252,7 @@
             "Environment": [
               { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
               { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
-              { "Name": "ADMIN_PASSWORD", "Value": { "Ref": "AdminPassword" } }
+              { "Name": "ADMIN_PASSWORD", "Value": { "Ref": "GoCDAdminOTP" } }
             ]
           },
           {
@@ -297,10 +297,10 @@
       "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "DNSName" ] ] } }
     },
 
-    "AdminPasswort": {
-      "Description": "GoCD Server Admin Password",
-      "Value": { "Ref": "AdminPassword" },
-      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "AdminPassword" ] ] } }
+    "GoCDAdminOTP": {
+      "Description": "GoCD Server Admin OTP",
+      "Value": { "Ref": "GoCDAdminOTP" },
+      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "GoCDAdminOTP" ] ] } }
     },
   }
 }
