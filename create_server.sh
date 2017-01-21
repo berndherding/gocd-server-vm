@@ -8,11 +8,10 @@
 
 STACK_SUFFIX=${1:-init}
 
-fromVolumeLabel=${2:-live}                 # "none", "live"
-mapHostVolumes=${3:-map-host-volumes}
+from=${2:-live}   # label of volume to copy, e.g. "none", "live"
 
 GOCD_VOL="$(getStackname "gocd-vol" "$STACK_SUFFIX")"
 GOCD_SVM="$(getStackname "gocd-svm" "$STACK_SUFFIX")"
 
-createVolumes "$GOCD_VOL" "$fromVolumeLabel" || exit $?
-createServer  "$GOCD_SVM" "$mapHostVolumes"  || exit $?
+createVolumes "$GOCD_VOL" "$from" || exit $?
+createServer  "$GOCD_SVM"         || exit $?
