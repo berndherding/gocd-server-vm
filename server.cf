@@ -291,10 +291,10 @@
 
   "Outputs": {
 
-    "DNSName": {
-      "Description": "GoCD Server DNS Name",
+    "GoCDServerURL": {
+      "Description": "GoCD Server Url",
       "Value": { "Fn::Join": [ "", [ "https://", { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] }, "/" ] ] },
-      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "DNSName" ] ] } }
+      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "GoCDServerURL" ] ] } }
     },
 
     "GoCDAdminOTP": {
