@@ -4,6 +4,7 @@
   "AWSTemplateFormatVersion": "2010-09-09",
 
   "Parameters" : {
+    "Release":          { "Type": "String" }
     "VpcId":            { "Type": "String" },
     "ImageId":          { "Type": "String" },
     "EcsAuth":          { "Type": "String", "NoEcho": true },
@@ -110,6 +111,10 @@
                     "ECS_CLUSTER=$ECS_CLUSTER",
                     "ECS_ENGINE_AUTH_TYPE=dockercfg",
                     "ECS_ENGINE_AUTH_DATA={\"https://index.docker.io/v1/\":{\"auth\":\"$ECS_AUTH\",\"email\":\"$ECS_EMAIL\"}}",
+                    "EOF",
+
+                    "cat <<EOF > /release/vm",
+                    { "Fn::Join": [ "=", [ "VM_RELEASE", { "Ref": "Release" } ] ] },
                     "EOF",
 
                     "date; cat <<EOF > /root/mountvolumes.sh",
@@ -241,6 +246,10 @@
             "Memory": 1280,
             "MountPoints": [
               {
+                "ContainerPath": "/release",
+                "SourceVolume":   "release"
+              },
+              {
                 "ContainerPath": { "Fn::ImportValue": { "Fn::Sub": "${VolumeStack}:mountpoint-etc-go" } },
                 "SourceVolume":   "etc-go"
               },
@@ -282,6 +291,7 @@
         "Volumes": [
           { "Host": { "SourcePath": "/xvdb" }, "Name": "etc-go" },
           { "Host": { "SourcePath": "/xvdc" }, "Name": "var-lib-go-server" },
+          { "Host": { "SourcePath": "/release" }, "Name": "release" },
           { "Host": { "SourcePath": "/var/run/docker.sock" }, "Name": "var-run-docker-sock" }
         ],
         "Family": "go-server"

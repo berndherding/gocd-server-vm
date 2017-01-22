@@ -55,6 +55,7 @@ function createServer() {
   echo
   echo "createServer for $gocd_svm"
 
+  release=$(getRelease)
   vpcId=$(getDefaultVpcId)
   imageId="$(getImageId)" # "ami-e012d48f"
 
@@ -85,6 +86,7 @@ function createServer() {
   --stack-name "$gocd_svm" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/server.cf" \
   --parameters \
+    ParameterKey=Release,ParameterValue="$release" \
     ParameterKey=VpcId,ParameterValue="$vpcId" \
     ParameterKey=ImageId,ParameterValue="$imageId" \
     ParameterKey=EcsAuth,ParameterValue="$ecsAuth" \
