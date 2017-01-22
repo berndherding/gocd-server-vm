@@ -49,8 +49,8 @@ function createServer() {
   [ -z "$DOCKER_HUB_PASSWORD" ] && return $ERROR_noDockerHubPassword
   [ -z "$DOCKER_HUB_EMAIL" ]    && return $ERROR_noDockerHubEmail
 
-  gocd_vol="$(getStackname "gocd-vol" "$label")"
-  gocd_svm="$(getStackname "gocd-svm" "$label")"
+  gocd_vol="$(getStackname "vol" "$label")"
+  gocd_svm="$(getStackname "svm" "$label")"
 
   echo
   echo "createServer for $gocd_svm"
@@ -110,6 +110,6 @@ function createServer() {
 
 function destroyServer() {
   local label=$1
-  gocd_svm="$(getStackname "gocd-svm" "$label")"
+  gocd_svm="$(getStackname "svm" "$label")"
   destroyStack "$gocd_svm" || return $? 
 }
