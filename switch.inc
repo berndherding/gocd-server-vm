@@ -21,8 +21,8 @@ function switch() {
   local label=$1
   local gocd_url=$2
 
-  gocd_vol="$(getStackname "gocd-vol" "$label")"
-  gocd_svm="$(getStackname "gocd-svm" "$label")"
+  gocd_vol="$(getStackname "vol" "$label")"
+  gocd_svm="$(getStackname "svm" "$label")"
 
   switchVolume "$gocd_vol" "$label"      || return $?
   if [ -n "$gocd_url" ] ; then
@@ -96,13 +96,13 @@ function getHostedZoneId() {
 
 
 
-function getCname() {
+function getGoCDServerURL() {
   local stackname=$1
 
   # shellcheck disable=SC2016
   aws cloudformation describe-stacks \
   --stack-name "$stackname" \
-  --query 'Stacks[*].Outputs[?OutputKey==`DNSName`].OutputValue' \
+  --query 'Stacks[*].Outputs[?OutputKey==`GoCDServerURL`].OutputValue' \
   --output text \
   || return $ERROR_getCname
 }
@@ -111,9 +111,13 @@ function getCname() {
 
 function switchServer() {
   local stackname=$1
-  local gocd_url=$2                  # alias short name, e.g. gocd.yourcompany.com
+  local gocd_url=$2   # alias short name, e.g. gocd.yourcompany.com
 
-  cname="$(getCname "$stackname")"   # ELB public dns name
+  local cname         # ELB public dns name
+
+  cname="$(getGoCDServerURL "$stackname")" || return $?
+  cname="${cname#*://}"
+  cname="${cname%%/*}"
 
   zone="${gocd_url#*\.}."
   zoneId=$(getHostedZoneId "$zone")
@@ -132,8 +136,8 @@ function switchServer() {
       "Action": "UPSERT",
       "ResourceRecordSet": {
         "Name": "$gocd_url",
-        "Type": "A",
-        "TTL": 300,
+        "Type": "CNAME",
+        "TTL": 60,
         "ResourceRecords": [ { "Value": "$cname" } ]
       }
     }
