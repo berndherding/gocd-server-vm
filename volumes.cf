@@ -48,26 +48,26 @@
 
   "Outputs": {
 
-    "VolIdEtcGo": {
+    "VolumeIdEtcGo": {
       "Description": "Volume Id of etc-go",
       "Value": { "Ref": "VolumeEtcGo" },
-      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "vol-id-etc-go" ] ] } }
+      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "volume-id-etc-go" ] ] } }
     },
 
-    "VolIdVarLib": {
+    "VolumeIdVarLib": {
       "Description": "Volume Id of var-lib",
       "Value": { "Ref": "VolumeVarLib" },
-      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "vol-id-var-lib" ] ] } }
+      "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "volume-id-var-lib" ] ] } }
     },
 
     "MountpointEtcGo": {
-      "Description": "Mountpoint of /etc/go in container: /xvdb if empty, /etc/go if populated",
+      "Description": "Mountpoint of etc-go in container: /xvdb if empty, /etc/go if populated",
       "Value": { "Fn::If": [ "CreateEtcGoFromSnapshot", "/etc/go", "/xvdb" ] },
       "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "mountpoint-etc-go" ] ] } }
     },
 
     "MountpointVarLib": {
-      "Description": "Mountpoint of /var/lib/go-server in container: /xvdc if empty, /var/lib/go-server if populated",
+      "Description": "Mountpoint of var-lib in container: /xvdc if empty, /var/lib/go-server if populated",
       "Value": { "Fn::If": [ "CreateVarLibFromSnapshot", "/var/lib/go-server", "/xvdc" ] },
       "Export": { "Name": { "Fn::Join": [ ":", [ { "Ref": "AWS::StackName" }, "mountpoint-var-lib" ] ] } }
     }
