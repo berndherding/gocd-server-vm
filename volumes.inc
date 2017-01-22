@@ -11,6 +11,7 @@
 
 ERROR_getVolumeId_describeVolumes=1
 ERROR_setSnapshotName_createTags=2
+ERROR_getLabelOfVolume=12
 ERROR_getLabeledVolumeName_describeVolumes=3
 ERROR_getLabeledVolumeId_describeVolumes=4
 ERROR_createSnapshot_createSnapshot=5
@@ -48,17 +49,17 @@ function setSnapshotName() {
 
 
 
-function getLabeledVolumeName() {
-  local volumeId=$1
+function getLabelOfVolume() {
+  local volumename=$1
 
   # shellcheck disable=SC2016
-  volumeName=$(aws ec2 describe-volumes \
-    --filters Name=volume-id,Values="$volumeId" \
-    --query 'Volumes[0].Tags[?Key==`Name`]|[0].Value' \
-    --out text 2> /dev/null
-  ) || return $ERROR_getLabeledVolumeName_describeVolumes
+  label=$(aws ec2 describe-volumes \
+    --filters Name=tag:Name,Values="$volumename" \
+    --query 'Volumes[0].Tags[?Key==`Stage`].Value' \
+    --output text 2> /dev/null
+  ) || return $ERROR_getLabelOfVolume
 
-  [ "$volumeName" != "None" ] && echo "$volumeName" || echo ""
+  [ "$label" != "None" ] && echo "$label" || echo ""
 }
 
 
@@ -77,6 +78,21 @@ function getLabeledVolumeId() {
   ) || return $ERROR_getLabeledVolumeId_describeVolumes
 
   [ "$volumeId" != "None" ] && echo "$volumeId" || echo ""
+}
+
+
+
+function getLabeledVolumeName() {
+  local volumeId=$1
+
+  # shellcheck disable=SC2016
+  volumeName=$(aws ec2 describe-volumes \
+    --filters Name=volume-id,Values="$volumeId" \
+    --query 'Volumes[0].Tags[?Key==`Name`]|[0].Value' \
+    --out text 2> /dev/null
+  ) || return $ERROR_getLabeledVolumeName_describeVolumes
+
+  [ "$volumeName" != "None" ] && echo "$volumeName" || echo ""
 }
 
 
@@ -214,8 +230,18 @@ function destroyVolumes() {
 
 # TODO: if tagged "LIVE", make copies of volumes or use proper DeletionPolicy
 
-#  destroySnapshotOfVolume "$etcGoVolumeName"  || return $? &
-#  destroySnapshotOfVolume "$varLibVolumeName" || return $? &
+  etcGo="$gocd_vol-etc-go"
+  varLib="$gocd_vol-var-lib"
+
+  labelEtcGo="$(getLabelOfVolume "$etcGo")"
+  labelVarLib="$(getLabelOfVolume "$varLib")"
+
+  if [ "$labelEtcGo" = "live" ] || [ "$labelVarLib" = "live" ] ; then
+    return 0
+  fi
+
+  destroySnapshotOfVolume "$etcGo"  || return $? &
+  destroySnapshotOfVolume "$varLib" || return $? &
 
   destroyStack "$gocd_vol"  || return $?
 }
