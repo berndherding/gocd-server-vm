@@ -165,7 +165,7 @@ function createVolumes() {
   local label=$1
   local from=$2
 
-  gocd_vol="$(getStackname "gocd-vol" "$label")"
+  gocd_vol="$(getStackname "vol" "$label")"
 
   echo
   echo "createVolumes for $gocd_vol based on label \"$from\""
@@ -210,7 +210,7 @@ function createVolumes() {
 function destroyVolumes() {
   local label=$1
 
-  gocd_vol="$(getStackname "gocd-vol" "$label")"
+  gocd_vol="$(getStackname "vol" "$label")"
 
 # TODO: if tagged "LIVE", make copies of volumes or use proper DeletionPolicy
 
