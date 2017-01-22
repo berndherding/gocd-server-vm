@@ -13,6 +13,9 @@ ERROR_createServer_createStack=1
 ERROR_createServer_waitStack=2
 ERROR_getPublicIpAddress=3
 ERROR_getCertificateArn=4
+ERROR_noDockerHubUsername=5
+ERROR_noDockerHubPassword=6
+ERROR_noDockerHubEmail=7
 
 
 
@@ -40,26 +43,32 @@ function getCertificateArn() {
 
 
 function createServer() {
-  local stackname=$1
+  local label=$1
+
+  [ -z "$DOCKER_HUB_USERNAME" ] && return $ERROR_noDockerHubUsername
+  [ -z "$DOCKER_HUB_PASSWORD" ] && return $ERROR_noDockerHubPassword
+  [ -z "$DOCKER_HUB_EMAIL" ]    && return $ERROR_noDockerHubEmail
+
+  gocd_vol="$(getStackname "gocd-vol" "$label")"
+  gocd_svm="$(getStackname "gocd-svm" "$label")"
 
   echo
-  echo "createServer for $stackname"
+  echo "createServer for $gocd_svm"
 
   vpcId=$(getDefaultVpcId)
   imageId="$(getImageId)" # "ami-e012d48f"
 
-  ecsAuth="$(echo -n "$(getDockerHubUsername):$(getDockerHubPassword)" | base64)"
-  ecsEmail="$(getDockerHubEmail)"
+  ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
+  ecsEmail="$DOCKER_HUB_EMAIL"
 
-  volumeStack="${stackname//svm/vol}"
-  echo "* using $volumeStack associated volume stack"
+  echo "* using associated volume stack $gocd_vol"
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName 2> /dev/null)"
   gocdAgentImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName   2> /dev/null)"
 
   # take a chance to override images
-  [ -n "$GOCD_SERVER_IMAGE_TAG" ] && gocdServerImage="$(getDockerHubUsername)/gocd-server:$GOCD_SERVER_IMAGE_TAG"
-  [ -n "$GOCD_AGENT_IMAGE_TAG"  ] && gocdAgentImage="$(getDockerHubUsername)/gocd-agent:$GOCD_AGENT_IMAGE_TAG"
+  [ -n "$GOCD_SERVER_IMAGE_TAG" ] && gocdServerImage="$DOCKER_HUB_USERNAME/gocd-server:$GOCD_SERVER_IMAGE_TAG"
+  [ -n "$GOCD_AGENT_IMAGE_TAG"  ] &&  gocdAgentImage="$DOCKER_HUB_USERNAME/gocd-agent:$GOCD_AGENT_IMAGE_TAG"
 
   echo "* GoCD server image: $gocdServerImage"
   echo "* GoCD agent image:  $gocdAgentImage"
@@ -71,16 +80,16 @@ function createServer() {
     gocdAdminOTP="$(openssl rand -base64 12)"
   fi
 
-  echo "* creating new server stack $stackname"
+  echo "* creating new server stack $gocd_svm"
   aws cloudformation create-stack \
-  --stack-name "$stackname" \
+  --stack-name "$gocd_svm" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/server.cf" \
   --parameters \
     ParameterKey=VpcId,ParameterValue="$vpcId" \
     ParameterKey=ImageId,ParameterValue="$imageId" \
     ParameterKey=EcsAuth,ParameterValue="$ecsAuth" \
     ParameterKey=EcsEmail,ParameterValue="$ecsEmail" \
-    ParameterKey=VolumeStack,ParameterValue="$volumeStack" \
+    ParameterKey=VolumeStack,ParameterValue="$gocd_vol" \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
@@ -88,11 +97,11 @@ function createServer() {
     ParameterKey=GoCDAdminOTP,ParameterValue="$gocdAdminOTP" \
   > /dev/null || return $ERROR_createServer_createStack
 
-  echo "* waiting for $stackname to complete. this may take a few minutes."
-  aws cloudformation wait stack-create-complete --stack-name "$stackname" --output text \
+  echo "* waiting for $gocd_svm to complete. this may take a few minutes."
+  aws cloudformation wait stack-create-complete --stack-name "$gocd_svm" --output text \
   || return $ERROR_createServer_waitStack
 
-  publicIpAddress="$(getPublicIpAddress "$stackname")" || return $?
+  publicIpAddress="$(getPublicIpAddress "$gocd_svm")" || return $?
   echo "* public IP: $publicIpAddress"
   echo "$publicIpAddress" > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress
 }
@@ -100,6 +109,7 @@ function createServer() {
 
 
 function destroyServer() {
-  local stackname=$1
-  destroyStack "$stackname" || return $? 
+  local label=$1
+  gocd_svm="$(getStackname "gocd-svm" "$label")"
+  destroyStack "$gocd_svm" || return $? 
 }

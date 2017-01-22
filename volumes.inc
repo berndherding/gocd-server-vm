@@ -162,56 +162,60 @@ function countVolumes() {
 
 
 function createVolumes() {
-  local stackname=$1
-  local label=$2
+  local label=$1
+  local from=$2
+
+  gocd_vol="$(getStackname "gocd-vol" "$label")"
 
   echo
-  echo "createVolumes for $stackname based on label \"$label\""
+  echo "createVolumes for $gocd_vol based on label \"$from\""
 
-  count="$(countVolumes "$stackname-etc-go")" || return $?
+  count="$(countVolumes "$gocd_vol-etc-go")" || return $?
 
   if [ "$count" -eq 0 ] ; then
     echo "* no existing volumes. creating new ones."
 
     local origEtcGo snapEtcGo
 
-    origEtcGo=$(getLabeledVolumeId "etc-go" "$label")
+    origEtcGo=$(getLabeledVolumeId "etc-go" "$from")
 
     if [ -n "$origEtcGo" ] ; then
-      createSnapshot "$stackname" "etc-go" "$origEtcGo"       || return $?
+      createSnapshot "$gocd_vol" "etc-go" "$origEtcGo"       || return $?
       snapEtcGo="$snapshotId"
     fi
 
-    origVarLib=$(getLabeledVolumeId "var-lib" "$label")
+    origVarLib=$(getLabeledVolumeId "var-lib" "$from")
 
     if [ -n "$origVarLib" ] ; then
-      createSnapshot "$stackname" "var-lib" "$origVarLib"     || return $?
+      createSnapshot "$gocd_vol" "var-lib" "$origVarLib"     || return $?
       snapVarLib="$snapshotId"
     fi
 
-    echo "* creating new volume stack $stackname"
-    createVolumeStack "$stackname" "$snapEtcGo" "$snapVarLib" || return $?
+    echo "* creating new volume stack $gocd_vol"
+    createVolumeStack "$gocd_vol" "$snapEtcGo" "$snapVarLib" || return $?
 
   else
-    echo "* volumes for $stackname already exist. skipping."
+    echo "* volumes for $gocd_vol already exist. skipping."
   fi
 
-  volumeIdEtcGo="$(getVolumeId "$stackname-etc-go")"
+  volumeIdEtcGo="$(getVolumeId "$gocd_vol-etc-go")"
   echo "* volumeId for etc-go:  $volumeIdEtcGo"
 
-  volumeIdVarLib="$(getVolumeId "$stackname-var-lib")"
+  volumeIdVarLib="$(getVolumeId "$gocd_vol-var-lib")"
   echo "* volumeId for var-lib: $volumeIdVarLib"
 }
 
 
 
 function destroyVolumes() {
-  local stackname=$1
+  local label=$1
 
-  # TODO: if tagged "LIVE", make copies of volumes or use proper DeletionPolicy
+  gocd_vol="$(getStackname "gocd-vol" "$label")"
+
+# TODO: if tagged "LIVE", make copies of volumes or use proper DeletionPolicy
 
 #  destroySnapshotOfVolume "$etcGoVolumeName"  || return $? &
 #  destroySnapshotOfVolume "$varLibVolumeName" || return $? &
 
-  destroyStack "$stackname"  || return $?
+  destroyStack "$gocd_vol"  || return $?
 }

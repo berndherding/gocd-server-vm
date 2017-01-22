@@ -6,10 +6,7 @@
 # shellcheck source=volumes.inc
 . "$(dirname "${BASH_SOURCE[0]}")/volumes.inc"
 
-STACK_SUFFIX=test
-
-GOCD_VOL="$(getStackname "gocd-vol" "$STACK_SUFFIX")"
-GOCD_SVM="$(getStackname "gocd-svm" "$STACK_SUFFIX")"
+ENVLABEL=test
 
 SHUNIT=$(which shunit)
 
@@ -17,7 +14,7 @@ SHUNIT=$(which shunit)
 
 function testCreateVolumes() {
   # label "no-label" should not exist -> new, empty volume created
-  createVolumes "$GOCD_VOL" "no-label"
+  createVolumes "$ENVLABEL" "no-label"
   assertEquals "createVolumes failed" 0 $?
 }
 
@@ -25,21 +22,21 @@ function testCreateVolumes() {
 
 # volumes are empty
 function testCreateServer() {
-  createServer "$GOCD_SVM"
+  createServer "$ENVLABEL"
   assertEquals "createServer failed" 0 $?
 }
 
 
 
 function testDestroyServer() {
-  destroyServer "$GOCD_SVM"
+  destroyServer "$ENVLABEL"
   assertEquals "destroyServer failed" 0 $?
 }
 
 
 
 function testDestroyVolumes() {
-  destroyVolumes "$GOCD_VOL"
+  destroyVolumes "$ENVLABEL"
   assertEquals "destroyVolumes failed" 0 $?
 }
 
