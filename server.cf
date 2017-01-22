@@ -5,8 +5,8 @@
 
   "Parameters" : {
     "VpcId":            { "Type": "String" },
-    "ImageId" :         { "Type": "String" },
-    "EcsAuth" :         { "Type": "String", "NoEcho": true },
+    "ImageId":          { "Type": "String" },
+    "EcsAuth":          { "Type": "String", "NoEcho": true },
     "EcsEmail":         { "Type": "String" },
     "VolumeStack":      { "Type": "String" },
     "GoCDServerImage":  { "Type": "String" },
@@ -169,8 +169,8 @@
           }
         },
         "Volumes" : [
-          { "Device" : "/dev/xvdb", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:vol-id-etc-go" } } },
-          { "Device" : "/dev/xvdc", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:vol-id-var-lib" } } }
+          { "Device" : "/dev/xvdb", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:volume-id-etc-go" } } },
+          { "Device" : "/dev/xvdc", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:volume-id-var-lib" } } }
         ]
       }
     },
