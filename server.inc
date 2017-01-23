@@ -44,6 +44,7 @@ function getCertificateArn() {
 
 function createServer() {
   local label=$1
+  local update=$2
 
   [ -z "$DOCKER_HUB_USERNAME" ] && return $ERROR_noDockerHubUsername
   [ -z "$DOCKER_HUB_PASSWORD" ] && return $ERROR_noDockerHubPassword
@@ -81,10 +82,20 @@ function createServer() {
     gocdAdminOTP="$(openssl rand -base64 12)"
   fi
 
+  if [ "$update" = "update-stack" ] ; then
+    command="update-stack"
+    wait="stack-update-complete"
+    template="update-server.cf"
+  else
+    command="create-stack"
+    wait="stack-create-complete"
+    template="create-server.cf"
+  fi
+
   echo "* creating new server stack $gocd_svm"
-  aws cloudformation create-stack \
+  aws cloudformation "$command" \
   --stack-name "$gocd_svm" \
-  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/server.cf" \
+  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/$template" \
   --parameters \
     ParameterKey=Release,ParameterValue="$release" \
     ParameterKey=VpcId,ParameterValue="$vpcId" \
@@ -100,7 +111,7 @@ function createServer() {
   > /dev/null || return $ERROR_createServer_createStack
 
   echo "* waiting for $gocd_svm to complete. this may take a few minutes."
-  aws cloudformation wait stack-create-complete --stack-name "$gocd_svm" --output text \
+  aws cloudformation wait "$wait" --stack-name "$gocd_svm" --output text \
   || return $ERROR_createServer_waitStack
 
   publicIpAddress="$(getPublicIpAddress "$gocd_svm")" || return $?

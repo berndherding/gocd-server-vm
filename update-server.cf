@@ -61,19 +61,6 @@
       }
     },
 
-    "WaitOnServiceHandle" : {
-      "Type" : "AWS::CloudFormation::WaitConditionHandle"
-    },
-
-    "WaitOnServiceCondition" : {
-      "Type" : "AWS::CloudFormation::WaitCondition",
-      "DependsOn" : "Instance",
-      "Properties" : {
-        "Handle" : { "Ref" : "WaitOnServiceHandle" },
-        "Timeout" : "300"
-      }
-    },
-
     "Instance": {
       "Type": "AWS::EC2::Instance",
       "DependsOn": "Cluster",
@@ -98,11 +85,7 @@
                 "export ECS_EMAIL=", { "Ref": "EcsEmail" }, "\n",
                 "export ECS_CLUSTER=", { "Ref": "Cluster" }, "\n",
 
-                "export STACK=", { "Ref": "AWS::StackName" }, "\n",
-                "export REGION=", { "Ref": "AWS::Region" }, "\n",
-
                 "export WAIT_ON_MOUNT=\"", { "Ref": "WaitOnMountHandle" }, "\"\n",
-                "export WAIT_ON_SERVICE=\"", { "Ref": "WaitOnServiceHandle" }, "\"\n",
 
                 { "Fn::Join": [ "\n",
                   [
@@ -162,11 +145,7 @@
                     "  i=\\$((i + 5))",
                     "  sleep 5",
                     "done",
-                    "EOF",
-
-                    "date; /bin/bash /root/wait_for_gocd_server.sh 300",
-
-                    "date; /usr/local/bin/cfn-signal -e $? \"$WAIT_ON_SERVICE\""
+                    "EOF"
                   ]]
                 }
               ]
