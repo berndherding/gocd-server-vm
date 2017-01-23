@@ -16,7 +16,6 @@ ERROR_getCertificateArn=4
 ERROR_noDockerHubUsername=5
 ERROR_noDockerHubPassword=6
 ERROR_noDockerHubEmail=7
-ERROR_createServer_describeStacks=8
 
 
 
@@ -83,8 +82,11 @@ function createServer() {
     gocdAdminOTP="$(openssl rand -base64 12)"
   fi
 
-  stacks="$(aws cloudformation describe-stacks | grep "StackName.*$gocd_svm" 2> /dev/null)" \
-  || return $ERROR_createServer_describeStacks
+  stacks="$(aws cloudformation describe-stacks \
+    --stack-name "$gocd_svm" \
+    --query 'Stacks[*].StackId' \
+    --output text 2> /dev/null \
+  )"
 
   if [ "$update" = "update-stack" ] && [ -n "$stacks" ] ; then
     command="update-stack"
