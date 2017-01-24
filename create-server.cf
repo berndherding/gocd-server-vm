@@ -48,19 +48,6 @@
       }
     },
 
-    "WaitOnMountHandle" : {
-      "Type" : "AWS::CloudFormation::WaitConditionHandle"
-    },
-
-    "WaitOnMountCondition" : {
-      "Type" : "AWS::CloudFormation::WaitCondition",
-      "DependsOn" : "Instance",
-      "Properties" : {
-        "Handle" : { "Ref" : "WaitOnMountHandle" },
-        "Timeout" : "300"
-      }
-    },
-
     "Instance": {
       "Type": "AWS::EC2::Instance",
       "DependsOn": "Cluster",
