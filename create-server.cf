@@ -116,13 +116,17 @@
                     "    mount \"\\$dev\" \"\\$mp\"",
                     "  fi",
                     "}",
-                    "e2fsck /dev/xvdb",
-                    "e2fsck /dev/xvdc",
-                    "mountvolume /dev/xvdb /xvdb",
-                    "mountvolume /dev/xvdc /xvdc",
+                    "date; mountvolume /dev/xvdb /xvdb",
+                    "date; mountvolume /dev/xvdc /xvdc",
                     "EOF",
+
                     "date; /bin/bash /root/mountvolumes.sh",
           
+                    "date; cat <<EOF >> /etc/fstab",
+                    "/dev/xvdb   /xvdb       ext4    defaults,noatime  1   1",
+                    "/dev/xvdc   /xvdc       ext4    defaults,noatime  1   1",
+                    "EOF",
+
                     "date; stop ecs",
                     "date; service docker restart",
                     "date; start ecs",
