@@ -10,7 +10,7 @@
 
     "TaskDefinition": {
       "Type": "AWS::ECS::TaskDefinition",
-      "DependsOn": "WaitOnMountCondition",
+      "DependsOn": "Instance",
       "Properties" : {
         "ContainerDefinitions" : [ 
           {
