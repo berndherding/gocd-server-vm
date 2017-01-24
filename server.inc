@@ -37,8 +37,7 @@ function getPublicIpAddress() {
 function getCertificateArn() {
   local fqdn=$1
 
-  aws acm list-certificates \
-  | jq -r '.CertificateSummaryList[] | select(.DomainName=="'"$fqdn"'").CertificateArn' \
+  aws acm list-certificates --query 'CertificateSummaryList[?DomainName==`'"$fqdn"'`].CertificateArn' --output text \
   || return $ERROR_getCertificateArn
 }
 
