@@ -50,9 +50,10 @@ function getCreateParameters() {
   [ -z "$DOCKER_HUB_PASSWORD" ] && return $ERROR_noDockerHubPassword
   [ -z "$DOCKER_HUB_EMAIL" ]    && return $ERROR_noDockerHubEmail
 
-  release=$(getRelease)
+  imageId="$(getImageId)"      # "ami-e012d48f"
   vpcId=$(getDefaultVpcId)
-  imageId="$(getImageId)" # "ami-e012d48f"
+
+  release="$(dirname "${BASH_SOURCE[0]}")/target/release" 2> /dev/null
 
   ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
   ecsEmail="$DOCKER_HUB_EMAIL"
@@ -77,6 +78,8 @@ function createServer() {
   echo
   echo "createServer gocd_svm"
   echo "* using volume stack $gocd_vol"
+
+  getRelease > "$(dirname "${BASH_SOURCE[0]}")/target/release"
 
   createParameters=$(getCreateParameters "$gocd_vol") || return $?
 
