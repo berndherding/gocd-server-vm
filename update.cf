@@ -1,0 +1,78 @@
+
+    "Service": {
+      "Type": "AWS::ECS::Service",
+      "Properties" : {
+        "Cluster": { "Ref": "Cluster" },
+        "DesiredCount": 1,
+        "TaskDefinition" : { "Ref": "TaskDefinition" }
+      }
+    },
+
+    "TaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "DependsOn": "WaitOnMountCondition",
+      "Properties" : {
+        "ContainerDefinitions" : [ 
+          {
+            "Name": "go-server",
+            "Image": { "Ref": "GoCDServerImage" },
+            "PortMappings":[
+              { "ContainerPort": 8153, "HostPort": 80   },
+              { "ContainerPort": 8154, "HostPort": 443  },
+              { "ContainerPort": 8154, "HostPort": 8154 }
+            ],
+            "Essential": "true",
+            "Memory": 1280,
+            "MountPoints": [
+              {
+                "ContainerPath": "/release",
+                "SourceVolume":   "release"
+              },
+              {
+                "ContainerPath": { "Fn::ImportValue": { "Fn::Sub": "${VolumeStack}:mountpoint-etc-go" } },
+                "SourceVolume":   "etc-go"
+              },
+              {
+                "ContainerPath": { "Fn::ImportValue": { "Fn::Sub": "${VolumeStack}:mountpoint-var-lib" } },
+                "SourceVolume":   "var-lib-go-server"
+              }
+            ],
+            "Environment": [
+              { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
+              { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
+              { "Name": "ADMIN_PASSWORD", "Value": { "Ref": "GoCDAdminOTP" } }
+            ]
+          },
+          {
+            "Fn::If" : [ 
+              "WithAgentImage",
+              {
+                "Name": "go-agent",
+                "Image": { "Ref": "GoCDAgentImage" },
+                "Memory": 512,
+                "MountPoints": [
+                  {
+                    "ContainerPath": "/var/run/docker.sock",
+                    "SourceVolume":   "var-run-docker-sock"
+                  }
+                ],
+                "Environment": [
+                  { "Name": "AWS_DEFAULT_REGION", "Value": "eu-central-1" },
+                  { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
+                  { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
+                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "Instance", "PublicDnsName" ] } }
+                ]
+              },
+              { "Ref" : "AWS::NoValue" }
+            ]
+          }
+        ],
+        "Volumes": [
+          { "Host": { "SourcePath": "/xvdb" }, "Name": "etc-go" },
+          { "Host": { "SourcePath": "/xvdc" }, "Name": "var-lib-go-server" },
+          { "Host": { "SourcePath": "/release" }, "Name": "release" },
+          { "Host": { "SourcePath": "/var/run/docker.sock" }, "Name": "var-run-docker-sock" }
+        ],
+        "Family": "go-server"
+      }
+    },
