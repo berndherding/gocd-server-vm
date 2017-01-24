@@ -116,6 +116,8 @@
                     "    mount \"\\$dev\" \"\\$mp\"",
                     "  fi",
                     "}",
+                    "e2fsck /dev/xvdb",
+                    "e2fsck /dev/xvdc",
                     "mountvolume /dev/xvdb /xvdb",
                     "mountvolume /dev/xvdc /xvdc",
                     "EOF",
@@ -125,8 +127,6 @@
                     "date; service docker restart",
                     "date; start ecs",
 
-                    "date; /usr/local/bin/cfn-signal -e 0 -r \"volumes mounted, ecs restarted.\" \"$WAIT_ON_MOUNT\"", 
-
                     "date; cat <<EOF > /root/umountvolumes.sh",
                     "#!/bin/bash",
                     "umount /xvdc",
@@ -135,17 +135,7 @@
                     "chmod 755 /root/umountvolumes.sh",
                     "ln -sf /root/umountvolumes.sh /etc/rc3.d/K05umountvolumes",
 
-                    "date; cat <<EOF > /root/wait_for_gocd_server.sh",
-                    "#!/bin/bash",
-                    "i=0",
-                    "timeout=\\$1",
-                    "while true ; do",
-                    "  [ \\$i -ge \\$timeout ] && exit 1",
-                    "  curl -s -o /dev/null http://localhost && exit 0",
-                    "  i=\\$((i + 5))",
-                    "  sleep 5",
-                    "done",
-                    "EOF"
+                    "date; /usr/local/bin/cfn-signal -e 0 -r \"volumes mounted, ecs restarted.\" \"$WAIT_ON_MOUNT\"" 
                   ]]
                 }
               ]
