@@ -46,31 +46,16 @@ function getCertificateArn() {
 function getCreateParameters() {
   local gocd_vol=$1
 
-  [ -z "$DOCKER_HUB_USERNAME" ] && return $ERROR_noDockerHubUsername
-  [ -z "$DOCKER_HUB_PASSWORD" ] && return $ERROR_noDockerHubPassword
-  [ -z "$DOCKER_HUB_EMAIL" ]    && return $ERROR_noDockerHubEmail
-
-  imageId="$(getImageId)"      # "ami-e012d48f"
-  vpcId=$(getDefaultVpcId)
-
-  release="$(dirname "${BASH_SOURCE[0]}")/target/release" 2> /dev/null
-
-  ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
-  ecsEmail="$DOCKER_HUB_EMAIL"
-
-  echo \
-    ParameterKey=Release,ParameterValue="$release" \
-    ParameterKey=VpcId,ParameterValue="$vpcId" \
-    ParameterKey=ImageId,ParameterValue="$imageId" \
-    ParameterKey=EcsAuth,ParameterValue="$ecsAuth" \
-    ParameterKey=EcsEmail,ParameterValue="$ecsEmail" \
-    ParameterKey=VolumeStack,ParameterValue="$gocd_vol"
 }
 
 
 
 function createServer() {
   local label=$1
+
+  [ -z "$DOCKER_HUB_USERNAME" ] && return $ERROR_noDockerHubUsername
+  [ -z "$DOCKER_HUB_PASSWORD" ] && return $ERROR_noDockerHubPassword
+  [ -z "$DOCKER_HUB_EMAIL" ]    && return $ERROR_noDockerHubEmail
 
   gocd_vol="$(getStackname "vol" "$label")"
   gocd_svm="$(getStackname "svm" "$label")"
@@ -81,14 +66,25 @@ function createServer() {
 
   getRelease > "$(dirname "${BASH_SOURCE[0]}")/target/release"
 
-  createParameters=$(getCreateParameters "$gocd_vol") || return $?
+  imageId="$(getImageId)"      # "ami-e012d48f"
+  vpcId=$(getDefaultVpcId)
+
+  release="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/release" 2> /dev/null)"
+
+  ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
+  ecsEmail="$DOCKER_HUB_EMAIL"
 
   echo "* creating new server stack $gocd_svm"
-  # shellcheck disable=SC2086
   aws cloudformation "create-stack" \
   --stack-name "$gocd_svm" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/create-server.cf" \
-  --parameters $createParameters \
+  --parameters \
+    ParameterKey=Release,ParameterValue="$release"      \
+    ParameterKey=VpcId,ParameterValue="$vpcId"          \
+    ParameterKey=ImageId,ParameterValue="$imageId"      \
+    ParameterKey=EcsAuth,ParameterValue="$ecsAuth"      \
+    ParameterKey=EcsEmail,ParameterValue="$ecsEmail"    \
+    ParameterKey=VolumeStack,ParameterValue="$gocd_vol" \
   > /dev/null || return $ERROR_createServer_createStack
 
   echo "* waiting for $gocd_svm to complete. this may take a few minutes."
@@ -105,10 +101,25 @@ function createServer() {
 
 
 
-function getUpdateParameters() {
-  local gocd_vol=$1
+function updateServer() {
+  local label=$1
 
-  createParameters=$(getCreateParameters "$gocd_vol") || return $?
+  gocd_vol="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdVol 2> /dev/null)"
+  gocd_svm="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdSvm 2> /dev/null)"
+
+  echo
+  echo "updateServer $gocd_svm"
+  echo "* using volume stack $gocd_vol"
+
+  getRelease > "$(dirname "${BASH_SOURCE[0]}")/target/release"
+
+  imageId="$(getImageId)"      # "ami-e012d48f"
+  vpcId=$(getDefaultVpcId)
+
+  release="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/release" 2> /dev/null)"
+
+  ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
+  ecsEmail="$DOCKER_HUB_EMAIL"
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName 2> /dev/null)"
   gocdAgentImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName   2> /dev/null)"
@@ -123,37 +134,24 @@ function getUpdateParameters() {
     gocdAdminOTP="$(openssl rand -base64 12)"
   fi
 
-  # shellcheck disable=SC2086
-  echo $createParameters \
-    ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
-    ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
-    ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
-    ParameterKey=CertificateArn,ParameterValue="$certificateArn" \
-    ParameterKey=GoCDAdminOTP,ParameterValue="$gocdAdminOTP"
-}
-
-
-
-function updateServer() {
-  local label=$1
-
-  gocd_vol="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdVol 2> /dev/null)"
-  gocd_svm="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdSvm 2> /dev/null)"
-
-  echo
-  echo "updateServer $gocd_svm"
-  echo "* using volume stack $gocd_vol"
-
-  updateParameters=$(getUpdateParameters "$gocd_vol") || return $?
-
   "$(dirname "${BASH_SOURCE[0]}")/create_update_template.sh"
 
   echo "* updating server stack $gocd_svm"
-  # shellcheck disable=SC2086
   aws cloudformation "update-stack" \
   --stack-name "$gocd_svm" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/update-server.cf" \
-  --parameters $updateParameters \
+  --parameters \
+    ParameterKey=Release,ParameterValue="$release"      \
+    ParameterKey=VpcId,ParameterValue="$vpcId"          \
+    ParameterKey=ImageId,ParameterValue="$imageId"      \
+    ParameterKey=EcsAuth,ParameterValue="$ecsAuth"      \
+    ParameterKey=EcsEmail,ParameterValue="$ecsEmail"    \
+    ParameterKey=VolumeStack,ParameterValue="$gocd_vol" \
+    ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
+    ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage"   \
+    ParameterKey=CertificateArn,ParameterValue="$certificateArn"   \
+    ParameterKey=GoCDAdminOTP,ParameterValue="$gocdAdminOTP"       \
+    ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
   > /dev/null || return $ERROR_updateServer_updateStack
 
   echo "* waiting for $gocd_svm to complete. this may take a few minutes."
