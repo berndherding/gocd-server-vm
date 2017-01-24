@@ -81,10 +81,11 @@ function createServer() {
   createParameters=$(getCreateParameters "$gocd_vol") || return $?
 
   echo "* creating new server stack $gocd_svm"
+  # shellcheck disable=SC2086
   aws cloudformation "create-stack" \
   --stack-name "$gocd_svm" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/create-server.cf" \
-  --parameters "$createParameters" \
+  --parameters $createParameters \
   > /dev/null || return $ERROR_createServer_createStack
 
   echo "* waiting for $gocd_svm to complete. this may take a few minutes."
@@ -144,10 +145,11 @@ function updateServer() {
   "$(dirname "${BASH_SOURCE[0]}")/create_update_template.sh"
 
   echo "* updating server stack $gocd_svm"
+  # shellcheck disable=SC2086
   aws cloudformation "update-stack" \
   --stack-name "$gocd_svm" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/update-server.cf" \
-  --parameters "$updateParameters" \
+  --parameters $updateParameters \
   > /dev/null || return $ERROR_updateServer_updateStack
 
   echo "* waiting for $gocd_svm to complete. this may take a few minutes."
