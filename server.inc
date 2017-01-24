@@ -123,7 +123,8 @@ function getUpdateParameters() {
     gocdAdminOTP="$(openssl rand -base64 12)"
   fi
 
-  echo "$createParameters" \
+  # shellcheck disable=SC2086
+  echo $createParameters \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage" \
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
