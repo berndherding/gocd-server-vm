@@ -48,6 +48,19 @@
       }
     },
 
+    "WaitOnMountHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+    },
+
+    "WaitOnMountCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "Instance",
+      "Properties" : {
+        "Handle" : { "Ref" : "WaitOnMountHandle" },
+        "Timeout" : "300"
+      }
+    },
+
     "Instance": {
       "Type": "AWS::EC2::Instance",
       "DependsOn": "Cluster",
@@ -71,6 +84,8 @@
                 "export ECS_AUTH=", { "Ref": "EcsAuth" }, "\n",
                 "export ECS_EMAIL=", { "Ref": "EcsEmail" }, "\n",
                 "export ECS_CLUSTER=", { "Ref": "Cluster" }, "\n",
+
+                "export WAIT_ON_MOUNT=\"", { "Ref": "WaitOnMountHandle" }, "\"\n",
 
                 { "Fn::Join": [ "\n",
                   [
@@ -122,7 +137,9 @@
                     "umount /xvdb",
                     "EOF",
                     "chmod 755 /root/umountvolumes.sh",
-                    "ln -sf /root/umountvolumes.sh /etc/rc3.d/K05umountvolumes"
+                    "ln -sf /root/umountvolumes.sh /etc/rc3.d/K05umountvolumes",
+
+                    "date; /usr/local/bin/cfn-signal -e 0 -r \"volumes mounted, ecs restarted.\" \"$WAIT_ON_MOUNT\"" 
                   ]]
                 }
               ]
