@@ -10,11 +10,11 @@
     "EcsAuth":          { "Type": "String", "NoEcho": true },
     "EcsEmail":         { "Type": "String" },
     "VolumeStack":      { "Type": "String" },
-    "GoCDServerImage":  { "Type": "String" },
-    "GoCDAgentImage":   { "Type": "String" },
-    "GithubPrivateKey": { "Type": "String", "NoEcho": true },
-    "CertificateArn":   { "Type": "String" },
-    "GoCDAdminOTP":     { "Type": "String", "NoEcho": true }
+    "GoCDServerImage":  { "Type": "String", "Default": "" },
+    "GoCDAgentImage":   { "Type": "String", "Default": "" },
+    "GithubPrivateKey": { "Type": "String", "Default": "", "NoEcho": true },
+    "CertificateArn":   { "Type": "String", "Default": "" },
+    "GoCDAdminOTP":     { "Type": "String", "Default": "", "NoEcho": true }
   },
 
   "Conditions" : {
