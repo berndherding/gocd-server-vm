@@ -14,7 +14,7 @@
     "GoCDAgentImage":   { "Type": "String", "Default": "" },
     "GithubPrivateKey": { "Type": "String", "Default": "", "NoEcho": true },
     "CertificateArn":   { "Type": "String", "Default": "" },
-    "GoCDAdminOTP":     { "Type": "String", "Default": "", "NoEcho": true }
+    "GoCDAdminOTP":     { "Type": "String", "Default": "****", "NoEcho": true }
   },
 
   "Conditions" : {
