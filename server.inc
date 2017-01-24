@@ -111,8 +111,6 @@ function updateServer() {
   echo "updateServer $gocd_svm"
   echo "* using volume stack $gocd_vol"
 
-  getRelease > "$(dirname "${BASH_SOURCE[0]}")/target/release"
-
   imageId="$(getImageId)"      # "ami-e012d48f"
   vpcId=$(getDefaultVpcId)
 
