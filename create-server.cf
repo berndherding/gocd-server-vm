@@ -9,7 +9,8 @@
     "ImageId":          { "Type": "String" },
     "EcsAuth":          { "Type": "String", "NoEcho": true },
     "EcsEmail":         { "Type": "String" },
-    "VolumeStack":      { "Type": "String" },
+    "SnapXvdb":         { "Type": "String" },
+    "SnapXvdc":         { "Type": "String" },
     "GoCDServerImage":  { "Type": "String", "Default": "" },
     "GoCDAgentImage":   { "Type": "String", "Default": "" },
     "GithubPrivateKey": { "Type": "String", "Default": "", "NoEcho": true },
@@ -18,62 +19,37 @@
   },
 
   "Conditions" : {
-    "WithAgentImage" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "GoCDAgentImage" }, "" ] } ] },
-    "HasCertificate" : { "Fn::Not" : [ { "Fn::Equals": [ { "Ref": "CertificateArn" }, "" ] } ] }
+    "WithAgentImage" : { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "GoCDAgentImage" }, "" ] } ] },
+    "HasCertificate" : { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "CertificateArn" }, "" ] } ] },
+    "HasSnapshots"   : { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "SnapXvdb" },       "" ] } ] }
   },
 
   "Resources": {
 
-    "LoadBalancer" : {
-      "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
-      "Properties" : {
-        "AvailabilityZones" : [ "eu-central-1b" ],
-        "Instances" : [ { "Ref": "Instance" } ],
-        "Listeners" : [
-          {
-            "InstancePort" : "80",
-            "InstanceProtocol" : "HTTP",
-            "LoadBalancerPort" : "80",
-            "Protocol" : "HTTP"
-          },
-          { "Fn::If" : [ "HasCertificate", {
-            "InstancePort" : "80",
-            "InstanceProtocol" : "HTTP",
-            "LoadBalancerPort" : "443",
-            "Protocol" : "HTTPS",
-            "SSLCertificateId" : { "Ref": "CertificateArn" }
-          }, { "Ref" : "AWS::NoValue" } ] } 
-        ],
-        "SecurityGroups": [ { "Ref": "ELBSecurityGroup" } ]
+    "AutoScalingGroup": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "DesiredCapacity": "1",
+        "LaunchConfigurationName": { "Ref": "LaunchConfiguration" },
+        "LoadBalancerNames": [ { "Ref": "LoadBalancer" } ],
+        "MinSize": "0",
+        "MaxSize": "1",
+        "AvailabilityZones": [ "eu-central-1b" ],
+        "Tags": [
+          { "Key": "Name", "Value": { "Ref": "AWS::StackName" }, "PropagateAtLaunch" : "true" }
+        ]
       }
     },
 
-    "WaitOnMountHandle" : {
-      "Type" : "AWS::CloudFormation::WaitConditionHandle"
-    },
-
-    "WaitOnMountCondition" : {
-      "Type" : "AWS::CloudFormation::WaitCondition",
-      "DependsOn" : "Instance",
-      "Properties" : {
-        "Handle" : { "Ref" : "WaitOnMountHandle" },
-        "Timeout" : "300"
-      }
-    },
-
-    "Instance": {
-      "Type": "AWS::EC2::Instance",
+    "LaunchConfiguration": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
       "DependsOn": "Cluster",
       "Properties": {
         "IamInstanceProfile": "ecsInstanceRole",
         "ImageId": { "Ref": "ImageId" },
         "InstanceType": "t2.medium",
         "KeyName": "gocd",
-        "Monitoring": "true",
-        "SecurityGroupIds": [ { "Ref": "AppSecurityGroup" } ],
-        "Tags": [
-          { "Key": "Name", "Value": { "Ref": "AWS::StackName" } }
-        ],
+        "SecurityGroups": [ { "Ref": "AppSecurityGroup" } ],
         "UserData": {
           "Fn::Base64": {
             "Fn::Join": [ "",
@@ -146,10 +122,61 @@
             ]
           }
         },
-        "Volumes" : [
-          { "Device" : "/dev/xvdb", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:volume-id-etc-go" } } },
-          { "Device" : "/dev/xvdc", "VolumeId" : { "Fn::ImportValue" : { "Fn::Sub" : "${VolumeStack}:volume-id-var-lib" } } }
+        "BlockDeviceMappings" : [
+          { 
+            "DeviceName": "/dev/xvdb",
+            "Ebs": {
+              "DeleteOnTermination" : false,
+              "SnapshotId": { "Fn::If": [ "HasSnapshots", { "Ref": "SnapXvdb" }, { "Ref": "AWS::NoValue" } ] },
+              "VolumeSize": { "Fn::If": [ "HasSnapshots", { "Ref": "AWS::NoValue" }, 1 ] },
+              "VolumeType" : "gp2"
+            }
+          },
+          { "DeviceName": "/dev/xvdc",
+            "Ebs": {
+              "DeleteOnTermination" : false,
+              "SnapshotId": { "Fn::If": [ "HasSnapshots", { "Ref": "SnapXvdc" }, { "Ref": "AWS::NoValue" } ] },
+              "VolumeSize": { "Fn::If": [ "HasSnapshots", { "Ref": "AWS::NoValue" }, 100 ] },
+              "VolumeType" : "gp2"
+            }
+          } 
         ]
+      }
+    },
+
+    "LoadBalancer" : {
+      "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties" : {
+        "AvailabilityZones" : [ "eu-central-1b" ],
+        "Listeners" : [
+          {
+            "InstancePort" : "80",
+            "InstanceProtocol" : "HTTP",
+            "LoadBalancerPort" : "80",
+            "Protocol" : "HTTP"
+          },
+          { "Fn::If" : [ "HasCertificate", {
+            "InstancePort" : "80",
+            "InstanceProtocol" : "HTTP",
+            "LoadBalancerPort" : "443",
+            "Protocol" : "HTTPS",
+            "SSLCertificateId" : { "Ref": "CertificateArn" }
+          }, { "Ref" : "AWS::NoValue" } ] } 
+        ],
+        "SecurityGroups": [ { "Ref": "ELBSecurityGroup" } ]
+      }
+    },
+
+    "WaitOnMountHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+    },
+
+    "WaitOnMountCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "AutoScalingGroup",
+      "Properties" : {
+        "Handle" : { "Ref" : "WaitOnMountHandle" },
+        "Timeout" : "300"
       }
     },
 
