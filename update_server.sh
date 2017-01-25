@@ -3,6 +3,7 @@
 # shellcheck source=server.inc
 . "$(dirname "$BASH_SOURCE")/server.inc"
 
-ENVLABEL=${1:-live}
+ENV=${1:-live}
+FROM=${2:-live}   # label of volume to copy, e.g. "none", "live"
 
-updateServer "$ENVLABEL" || exit $?
+updateServer "$ENV" "$FROM" || exit $?
