@@ -18,6 +18,22 @@ ERROR_noDockerHubPassword=6
 ERROR_noDockerHubEmail=7
 ERROR_updateServer_updateStack=8
 ERROR_udpateServer_waitStack=9
+ERROR_getEnvSnapshotId=10
+
+
+
+function getEnvSnapshotId() {
+  local environment=$1
+  local snapshotname=$2
+
+  aws ec2 describe-snapshots \
+  --owner-ids self \
+  --filters \
+    Name=tag:Name,Values="*$snapshotname*" \
+    Name=tag:Env,Values="$environment" \
+  --query 'Snapshots[*].SnapshotId' \
+  --output text || return $ERROR_getEnvSnapshotId
+}
 
 
 
@@ -52,6 +68,7 @@ function getCreateParameters() {
 
 function createServer() {
   local label=$1
+  local from=${2:-label}
 
   [ -z "$DOCKER_HUB_USERNAME" ] && return $ERROR_noDockerHubUsername
   [ -z "$DOCKER_HUB_PASSWORD" ] && return $ERROR_noDockerHubPassword
@@ -74,17 +91,21 @@ function createServer() {
   ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
   ecsEmail="$DOCKER_HUB_EMAIL"
 
+  snapXvdb="$(getEnvSnapshotId "$from" "etc-go")"
+  snapXvdc="$(getEnvSnapshotId "$from" "var-lib")"
+
   echo "* creating new server stack $gocd_svm"
   aws cloudformation "create-stack" \
   --stack-name "$gocd_svm" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/create-server.cf" \
   --parameters \
-    ParameterKey=Release,ParameterValue="$release"      \
-    ParameterKey=VpcId,ParameterValue="$vpcId"          \
-    ParameterKey=ImageId,ParameterValue="$imageId"      \
-    ParameterKey=EcsAuth,ParameterValue="$ecsAuth"      \
-    ParameterKey=EcsEmail,ParameterValue="$ecsEmail"    \
-    ParameterKey=VolumeStack,ParameterValue="$gocd_vol" \
+    ParameterKey=Release,ParameterValue="$release"   \
+    ParameterKey=VpcId,ParameterValue="$vpcId"       \
+    ParameterKey=ImageId,ParameterValue="$imageId"   \
+    ParameterKey=EcsAuth,ParameterValue="$ecsAuth"   \
+    ParameterKey=EcsEmail,ParameterValue="$ecsEmail" \
+    ParameterKey=SnapXvdb,ParameterValue="$snapXvdb" \
+    ParameterKey=SnapXvdc,ParameterValue="$snapXvdc" \
   > /dev/null || return $ERROR_createServer_createStack
 
   echo "* waiting for $gocd_svm to complete. this may take a few minutes."
@@ -103,6 +124,7 @@ function createServer() {
 
 function updateServer() {
   local label=$1
+  local from=$2
 
   gocd_vol="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdVol 2> /dev/null)"
   gocd_svm="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdSvm 2> /dev/null)"
@@ -118,6 +140,9 @@ function updateServer() {
 
   ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
   ecsEmail="$DOCKER_HUB_EMAIL"
+
+  snapXvdb="$(getEnvSnapshotId "$from" "etc-go")"
+  snapXvdc="$(getEnvSnapshotId "$from" "var-lib")"
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName 2> /dev/null)"
   gocdAgentImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName   2> /dev/null)"
@@ -139,12 +164,13 @@ function updateServer() {
   --stack-name "$gocd_svm" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/update-server.cf" \
   --parameters \
-    ParameterKey=Release,ParameterValue="$release"      \
-    ParameterKey=VpcId,ParameterValue="$vpcId"          \
-    ParameterKey=ImageId,ParameterValue="$imageId"      \
-    ParameterKey=EcsAuth,ParameterValue="$ecsAuth"      \
-    ParameterKey=EcsEmail,ParameterValue="$ecsEmail"    \
-    ParameterKey=VolumeStack,ParameterValue="$gocd_vol" \
+    ParameterKey=Release,ParameterValue="$release"   \
+    ParameterKey=VpcId,ParameterValue="$vpcId"       \
+    ParameterKey=ImageId,ParameterValue="$imageId"   \
+    ParameterKey=EcsAuth,ParameterValue="$ecsAuth"   \
+    ParameterKey=EcsEmail,ParameterValue="$ecsEmail" \
+    ParameterKey=SnapXvdb,ParameterValue="$snapXvdb" \
+    ParameterKey=SnapXvdc,ParameterValue="$snapXvdc" \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage"   \
     ParameterKey=CertificateArn,ParameterValue="$certificateArn"   \
