@@ -29,11 +29,11 @@
                 "SourceVolume":   "release"
               },
               {
-                "ContainerPath": { "Fn::ImportValue": { "Fn::Sub": "${VolumeStack}:mountpoint-etc-go" } },
+                "ContainerPath": { "Fn::If": [ "HasSnapshots", "/etc/go", "/xvdb" ] },
                 "SourceVolume":   "etc-go"
               },
               {
-                "ContainerPath": { "Fn::ImportValue": { "Fn::Sub": "${VolumeStack}:mountpoint-var-lib" } },
+                "ContainerPath": { "Fn::If": [ "HasSnapshots", "/var/lib/go-server", "/xvdc" ] },
                 "SourceVolume":   "var-lib-go-server"
               }
             ],
@@ -60,7 +60,7 @@
                   { "Name": "AWS_DEFAULT_REGION", "Value": "eu-central-1" },
                   { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
                   { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
-                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "Instance", "PublicDnsName" ] } }
+                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] } }
                 ]
               },
               { "Ref" : "AWS::NoValue" }
