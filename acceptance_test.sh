@@ -3,41 +3,24 @@
 # shellcheck source=server.inc
 . "$(dirname "${BASH_SOURCE[0]}")/server.inc"
 
-# shellcheck source=volumes.inc
-. "$(dirname "${BASH_SOURCE[0]}")/volumes.inc"
-
-ENVLABEL=test
+ENV=$1
+FROM=$2
+INSTANCE_TYPE=$3
 
 SHUNIT=$(which shunit)
 
 
 
-function testCreateVolumes() {
-  # label "no-label" should not exist -> new, empty volume created
-  createVolumes "$ENVLABEL" "no-label"
-  assertEquals "createVolumes failed" 0 $?
-}
-
-
-
-# volumes are empty
 function testCreateServer() {
-  createServer "$ENVLABEL"
+  createServer "$ENV" no-master-volume "$INSTANCE_TYPE"
   assertEquals "createServer failed" 0 $?
 }
 
 
 
 function testDestroyServer() {
-  destroyServer "$ENVLABEL"
+  destroyServer "$ENV"
   assertEquals "destroyServer failed" 0 $?
-}
-
-
-
-function testDestroyVolumes() {
-  destroyVolumes "$ENVLABEL"
-  assertEquals "destroyVolumes failed" 0 $?
 }
 
 
