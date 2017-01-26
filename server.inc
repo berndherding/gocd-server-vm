@@ -96,6 +96,7 @@ function getVolumeId() {
 function getVolumeName() {
   local volumeId=$1
 
+  # shellcheck disable=SC2016
   aws ec2 describe-volumes \
   --volume-ids "$volumeId" \
   --query 'Volumes[*].Tags[?Key==`Name`].Value' \
@@ -116,6 +117,8 @@ function createSnapshot() {
     --query SnapshotId \
     --output text
   ) || return $ERROR_createSnapshot
+
+  sleep 10  # https://forums.aws.amazon.com/thread.jspa?messageID=564227, JoshuaF@AWS Posted on: Aug 19, 2014 7:18 AM
 
   aws ec2 wait snapshot-completed --snapshot-ids "$snapshotId" \
   || return $ERROR_waitCreateSnapshot
@@ -179,38 +182,49 @@ function setVolumesWithoutName() {
   local instanceId=$1
   local gocd_svm=$2
 
-  volumeIds=$(aws ec2 describe-volumes \
+  # shellcheck disable=SC2016
+  volumeDeviceTuples=$(aws ec2 describe-volumes \
     --filters Name=attachment.instance-id,Values="$instanceId" \
-    --query 'Volumes[*].{VolumeId:VolumeId,Name:Tags[?Key==`Name`].Value|[0]}|[?(Name==`null`||Name==``)].VolumeId' \
+    --query '
+      Volumes[*].{
+        VolumeId: VolumeId,
+        Device: Attachments[0].Device,
+        Name:Tags[?Key==`Name`].Value|[0]
+      }
+      | [?(Name==`null`||Name==``)].[VolumeId,Device]' \
     --output text \
   ) || return $ERROR_findVolumesWithoutName
 
-  for volumeId in $volumeIds ; do
-    setResourceTag "$volumeId" "Name" "$gocd_svm" || return $?
+  IFS=$'\n'
+  for volumeDeviceTuple in $volumeDeviceTuples ; do
+    unset IFS
+    a=($volumeDeviceTuple)
+    volumeId=${a[0]}
+    device=${a[1]}
+    device=${device//\//-}
+    device=${device#-}
+    setResourceTag "$volumeId" "Name" "$gocd_svm-$device" || return $?
   done
 }
 
 
 
 function createServer() {
-  local label=$1
-  local from=${2:-label}
+  local env=$1
+  local from=$2
+  local instanceType=$3
 
   [ -z "$DOCKER_HUB_USERNAME" ] && return $ERROR_noDockerHubUsername
   [ -z "$DOCKER_HUB_PASSWORD" ] && return $ERROR_noDockerHubPassword
   [ -z "$DOCKER_HUB_EMAIL" ]    && return $ERROR_noDockerHubEmail
 
-  gocd_svm="$(getStackname "svm" "$label")"
+  gocd_svm="$(getStackname "svm" "$env")"
 
   echo "createServer $gocd_svm from $from"
 
-  getRelease > "$(dirname "${BASH_SOURCE[0]}")/target/release"
-
-  imageId="$(getImageId)"      # "ami-e012d48f"
   vpcId=$(getDefaultVpcId)
-
-  release="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/release" 2> /dev/null)"
-
+  release="$(getRelease)" 
+  imageId="$(getImageId)"
   ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
   ecsEmail="$DOCKER_HUB_EMAIL"
 
@@ -222,32 +236,34 @@ function createServer() {
     snapXvdc=$(createSnapshot "$gocd_svm-var-lib" "$fromVolumeIdVarLib")
   fi
 
-  echo "$snapXvdb" > "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdb"
-  echo "$snapXvdc" > "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdc"
-
   echo "* creating new server stack $gocd_svm"
   aws cloudformation "create-stack" \
   --stack-name "$gocd_svm" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/create-server.cf" \
   --parameters \
-    ParameterKey=Release,ParameterValue="$release"   \
     ParameterKey=VpcId,ParameterValue="$vpcId"       \
+    ParameterKey=Release,ParameterValue="$release"   \
     ParameterKey=ImageId,ParameterValue="$imageId"   \
     ParameterKey=EcsAuth,ParameterValue="$ecsAuth"   \
     ParameterKey=EcsEmail,ParameterValue="$ecsEmail" \
     ParameterKey=SnapXvdb,ParameterValue="$snapXvdb" \
     ParameterKey=SnapXvdc,ParameterValue="$snapXvdc" \
+    ParameterKey=InstanceType,ParameterValue="$instanceType" \
   > /dev/null || return $ERROR_createServer_createStack
 
   echo "* waiting for $gocd_svm to complete. this may take a few minutes."
   aws cloudformation wait stack-create-complete --stack-name "$gocd_svm" --output text \
   || return $ERROR_createServer_waitStack
 
-  echo "$gocd_svm" > "$(dirname "${BASH_SOURCE[0]}")"/target/gocdSvm
+  publicIp="$(getPublicIpAddress "$gocd_svm")" || return $?
+  echo "* public IP: $publicIp"
 
-  publicIpAddress="$(getPublicIpAddress "$gocd_svm")" || return $?
-  echo "* public IP: $publicIpAddress"
-  echo "$publicIpAddress" > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress
+  echo "$gocd_svm"     > "$(dirname "${BASH_SOURCE[0]}")/target/gocdSvm"
+  echo "$release"      > "$(dirname "${BASH_SOURCE[0]}")/target/release"
+  echo "$snapXvdb"     > "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdb"
+  echo "$snapXvdc"     > "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdc"
+  echo "$publicIp"     > "$(dirname "${BASH_SOURCE[0]}")/target/publicIp"
+  echo "$instanceType" > "$(dirname "${BASH_SOURCE[0]}")/target/instanceType"
 
   setVolumeNames "$gocd_svm" || return $?
 }
@@ -255,7 +271,7 @@ function createServer() {
 
 
 function updateServer() {
-  local label=$1
+  local env=$1
   local from=$2
 
   gocd_svm="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdSvm 2> /dev/null)"
@@ -263,19 +279,19 @@ function updateServer() {
   echo
   echo "updateServer $gocd_svm"
 
-  imageId="$(getImageId)"      # "ami-e012d48f"
   vpcId=$(getDefaultVpcId)
-
-  release="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/release" 2> /dev/null)"
-
+  imageId="$(getImageId)"
   ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
   ecsEmail="$DOCKER_HUB_EMAIL"
 
+  release="$(cat  "$(dirname "${BASH_SOURCE[0]}")/target/release"  2> /dev/null)"
   snapXvdb="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdb" 2> /dev/null)"
   snapXvdc="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdc" 2> /dev/null)"
 
+  instanceType="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/instanceType 2> /dev/null)"
+
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName 2> /dev/null)"
-  gocdAgentImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName   2> /dev/null)"
+  gocdAgentImage="$(cat  "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName  2> /dev/null)"
 
   # take a chance to override images
   [ -n "$GOCD_SERVER_IMAGE_TAG" ] && gocdServerImage="$DOCKER_HUB_USERNAME/gocd-server:$GOCD_SERVER_IMAGE_TAG"
@@ -294,13 +310,14 @@ function updateServer() {
   --stack-name "$gocd_svm" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/update-server.cf" \
   --parameters \
-    ParameterKey=Release,ParameterValue="$release"   \
     ParameterKey=VpcId,ParameterValue="$vpcId"       \
+    ParameterKey=Release,ParameterValue="$release"   \
     ParameterKey=ImageId,ParameterValue="$imageId"   \
     ParameterKey=EcsAuth,ParameterValue="$ecsAuth"   \
     ParameterKey=EcsEmail,ParameterValue="$ecsEmail" \
     ParameterKey=SnapXvdb,ParameterValue="$snapXvdb" \
     ParameterKey=SnapXvdc,ParameterValue="$snapXvdc" \
+    ParameterKey=InstanceType,ParameterValue="$instanceType"       \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
     ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage"   \
     ParameterKey=CertificateArn,ParameterValue="$certificateArn"   \
@@ -316,7 +333,7 @@ function updateServer() {
 
 
 function destroyServer() {
-  local label=$1
-  gocd_svm="$(getStackname "svm" "$label")"
+  local env=$1
+  gocd_svm="$(getStackname "svm" "$env")"
   destroyStack "$gocd_svm" || return $? 
 }
