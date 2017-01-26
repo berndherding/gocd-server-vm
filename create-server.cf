@@ -11,6 +11,7 @@
     "EcsEmail":         { "Type": "String" },
     "SnapXvdb":         { "Type": "String" },
     "SnapXvdc":         { "Type": "String" },
+    "InstanceType":     { "Type": "String" },
     "GoCDServerImage":  { "Type": "String", "Default": "" },
     "GoCDAgentImage":   { "Type": "String", "Default": "" },
     "GithubPrivateKey": { "Type": "String", "Default": "", "NoEcho": true },
@@ -32,7 +33,7 @@
       "Properties": {
         "IamInstanceProfile": "ecsInstanceRole",
         "ImageId": { "Ref": "ImageId" },
-        "InstanceType": "t2.medium",
+        "InstanceType": { "Ref": "InstanceType" },
         "KeyName": "gocd",
         "Monitoring": true,
         "SecurityGroupIds": [ { "Ref": "AppSecurityGroup" } ],
