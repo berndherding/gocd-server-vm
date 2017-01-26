@@ -18,21 +18,111 @@ ERROR_noDockerHubPassword=6
 ERROR_noDockerHubEmail=7
 ERROR_updateServer_updateStack=8
 ERROR_udpateServer_waitStack=9
-ERROR_getEnvSnapshotId=10
+ERROR_getSnapshotId=10
+ERROR_getInstanceId=11
+ERROR_getVolumeId=12
+ERROR_setResourceTag=13
+ERROR_findVolumesWithoutName=14
+ERROR_getVolumeIdsByNameAndEnv=15
+ERROR_createSnapshot=16
+ERROR_waitCreateSnapshot=17
+ERROR_getVolumeName=18
 
 
 
-function getEnvSnapshotId() {
-  local environment=$1
-  local snapshotname=$2
+function getSnapshotId() {
+  local from=$1
+  local pattern=$2
 
   aws ec2 describe-snapshots \
   --owner-ids self \
   --filters \
-    Name=tag:Name,Values="*$snapshotname*" \
-    Name=tag:Env,Values="$environment" \
+    Name=tag:Name,Values="*$pattern*" \
+    Name=tag:Env,Values="$from" \
   --query 'Snapshots[*].SnapshotId' \
-  --output text || return $ERROR_getEnvSnapshotId
+  --output text || return $ERROR_getSnapshotId
+}
+
+
+
+function getInstanceId() {
+  local gocd_svm=$1
+
+  aws ec2 describe-instances \
+  --filters \
+    Name=tag:Name,Values="$gocd_svm" \
+    Name=instance-state-name,Values=running,pending \
+  --query 'Reservations[*].Instances[*].InstanceId' \
+  --output text || return $ERROR_getInstanceId
+}
+
+
+
+function getVolumeIdByPatternAndEnv() {
+  local pattern=$1
+  local env=$2
+
+  volumeId=$(aws ec2 describe-volumes \
+    --filters \
+      Name=status,Values=available,in-use \
+      Name=tag:Name,Values="*$pattern*" \
+      Name=tag:Env,Values="$env" \
+    --query 'Volumes[0].VolumeId' \
+    --output text 
+  ) || return $ERROR_getVolumeIdsByNameAndEnv
+
+  [ "$volumeId" != "None" ] && echo "$volumeId" || echo ""
+}
+
+
+
+function getVolumeId() {
+  local instanceId=$1
+  local devicename=$2
+
+  volumeId=$(aws ec2 describe-volumes \
+    --filters \
+      Name=attachment.instance-id,Values="$instanceId" \
+      Name=attachment.device,Values="$devicename" \
+    --query 'Volumes[*].VolumeId' \
+    --output text 
+  ) || return $ERROR_getVolumeId
+
+  [ "$volumeId" != "None" ] && echo "$volumeId" || echo ""
+}
+
+
+
+function getVolumeName() {
+  local volumeId=$1
+
+  aws ec2 describe-volumes \
+  --volume-ids "$volumeId" \
+  --query 'Volumes[*].Tags[?Key==`Name`].Value' \
+  --output text || return $ERROR_getVolumeName
+}
+
+
+
+function createSnapshot() {
+  local snapshotName=$1
+  local fromVolumeId=$2
+
+  fromVolumeName=$(getVolumeName "$fromVolumeId")
+
+  snapshotId=$(aws ec2 create-snapshot \
+    --volume-id="$fromVolumeId" \
+    --description "Created by create_server.sh for $snapshotName from $fromVolumeName ($fromVolumeId)" \
+    --query SnapshotId \
+    --output text
+  ) || return $ERROR_createSnapshot
+
+  aws ec2 wait snapshot-completed --snapshot-ids "$snapshotId" \
+  || return $ERROR_waitCreateSnapshot
+
+  setResourceTag "$snapshotId" "Name" "$snapshotName" || return $?
+
+  echo "$snapshotId"
 }
 
 
@@ -59,9 +149,45 @@ function getCertificateArn() {
 
 
 
-function getCreateParameters() {
-  local gocd_vol=$1
+function setResourceTag() {
+  local id=$1
+  local key=$2
+  local value=$3
 
+  aws ec2 create-tags \
+  --resources "$id" \
+  --tags Key="$key",Value="$value" \
+  || return $ERROR_setResourceTag
+}
+
+
+
+function setVolumeNames() {
+  local gocd_svm=$1
+
+  instanceId="$(getInstanceId "$gocd_svm")"                 || return $?
+  volumeIdXvdb="$(getVolumeId "$instanceId" "/dev/xvdb")"   || return $?
+  volumeIdXvdc="$(getVolumeId "$instanceId" "/dev/xvdc")"   || return $?
+  setResourceTag "$volumeIdXvdb" "Name" "$gocd_svm-etc-go"  || return $?
+  setResourceTag "$volumeIdXvdc" "Name" "$gocd_svm-var-lib" || return $?
+  setVolumesWithoutName "$instanceId" "$gocd_svm"           || return $?
+}
+
+
+
+function setVolumesWithoutName() {
+  local instanceId=$1
+  local gocd_svm=$2
+
+  volumeIds=$(aws ec2 describe-volumes \
+    --filters Name=attachment.instance-id,Values="$instanceId" \
+    --query 'Volumes[*].{VolumeId:VolumeId,Name:Tags[?Key==`Name`].Value|[0]}|[?(Name==`null`||Name==``)].VolumeId' \
+    --output text \
+  ) || return $ERROR_findVolumesWithoutName
+
+  for volumeId in $volumeIds ; do
+    setResourceTag "$volumeId" "Name" "$gocd_svm" || return $?
+  done
 }
 
 
@@ -74,12 +200,9 @@ function createServer() {
   [ -z "$DOCKER_HUB_PASSWORD" ] && return $ERROR_noDockerHubPassword
   [ -z "$DOCKER_HUB_EMAIL" ]    && return $ERROR_noDockerHubEmail
 
-  gocd_vol="$(getStackname "vol" "$label")"
   gocd_svm="$(getStackname "svm" "$label")"
 
-  echo
-  echo "createServer gocd_svm"
-  echo "* using volume stack $gocd_vol"
+  echo "createServer $gocd_svm from $from"
 
   getRelease > "$(dirname "${BASH_SOURCE[0]}")/target/release"
 
@@ -91,8 +214,16 @@ function createServer() {
   ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
   ecsEmail="$DOCKER_HUB_EMAIL"
 
-  snapXvdb="$(getEnvSnapshotId "$from" "etc-go")"
-  snapXvdc="$(getEnvSnapshotId "$from" "var-lib")"
+  fromVolumeIdEtcGo=$(getVolumeIdByPatternAndEnv "etc-go" "$from")
+  fromVolumeIdVarLib=$(getVolumeIdByPatternAndEnv "var-lib" "$from")
+
+  if [ -n "$fromVolumeIdEtcGo" ] && [ -n "$fromVolumeIdVarLib" ] ; then
+    snapXvdb=$(createSnapshot "$gocd_svm-etc-go"  "$fromVolumeIdEtcGo")
+    snapXvdc=$(createSnapshot "$gocd_svm-var-lib" "$fromVolumeIdVarLib")
+  fi
+
+  echo "$snapXvdb" > "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdb"
+  echo "$snapXvdc" > "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdc"
 
   echo "* creating new server stack $gocd_svm"
   aws cloudformation "create-stack" \
@@ -112,12 +243,13 @@ function createServer() {
   aws cloudformation wait stack-create-complete --stack-name "$gocd_svm" --output text \
   || return $ERROR_createServer_waitStack
 
-  echo "$gocd_vol" > "$(dirname "${BASH_SOURCE[0]}")"/target/gocdVol
   echo "$gocd_svm" > "$(dirname "${BASH_SOURCE[0]}")"/target/gocdSvm
 
   publicIpAddress="$(getPublicIpAddress "$gocd_svm")" || return $?
   echo "* public IP: $publicIpAddress"
   echo "$publicIpAddress" > "$(dirname "${BASH_SOURCE[0]}")"/target/goServerPublicIpAddress
+
+  setVolumeNames "$gocd_svm" || return $?
 }
 
 
@@ -126,12 +258,10 @@ function updateServer() {
   local label=$1
   local from=$2
 
-  gocd_vol="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdVol 2> /dev/null)"
   gocd_svm="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdSvm 2> /dev/null)"
 
   echo
   echo "updateServer $gocd_svm"
-  echo "* using volume stack $gocd_vol"
 
   imageId="$(getImageId)"      # "ami-e012d48f"
   vpcId=$(getDefaultVpcId)
@@ -141,8 +271,8 @@ function updateServer() {
   ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
   ecsEmail="$DOCKER_HUB_EMAIL"
 
-  snapXvdb="$(getEnvSnapshotId "$from" "etc-go")"
-  snapXvdc="$(getEnvSnapshotId "$from" "var-lib")"
+  snapXvdb="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdb" 2> /dev/null)"
+  snapXvdc="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdc" 2> /dev/null)"
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName 2> /dev/null)"
   gocdAgentImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName   2> /dev/null)"
