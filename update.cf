@@ -60,7 +60,8 @@
                   { "Name": "AWS_DEFAULT_REGION", "Value": "eu-central-1" },
                   { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
                   { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
-                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] } }
+                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "Instance", "PublicDnsName" ] } }
+
                 ]
               },
               { "Ref" : "AWS::NoValue" }

@@ -26,30 +26,19 @@
 
   "Resources": {
 
-    "AutoScalingGroup": {
-      "Type": "AWS::AutoScaling::AutoScalingGroup",
-      "Properties": {
-        "DesiredCapacity": "1",
-        "LaunchConfigurationName": { "Ref": "LaunchConfiguration" },
-        "LoadBalancerNames": [ { "Ref": "LoadBalancer" } ],
-        "MinSize": "0",
-        "MaxSize": "1",
-        "AvailabilityZones": [ "eu-central-1b" ],
-        "Tags": [
-          { "Key": "Name", "Value": { "Ref": "AWS::StackName" }, "PropagateAtLaunch" : "true" }
-        ]
-      }
-    },
-
-    "LaunchConfiguration": {
-      "Type": "AWS::AutoScaling::LaunchConfiguration",
+    "Instance": {
+      "Type": "AWS::EC2::Instance",
       "DependsOn": "Cluster",
       "Properties": {
         "IamInstanceProfile": "ecsInstanceRole",
         "ImageId": { "Ref": "ImageId" },
         "InstanceType": "t2.medium",
         "KeyName": "gocd",
-        "SecurityGroups": [ { "Ref": "AppSecurityGroup" } ],
+        "Monitoring": true,
+        "SecurityGroupIds": [ { "Ref": "AppSecurityGroup" } ],
+        "Tags": [
+          { "Key": "Name", "Value": { "Ref": "AWS::StackName" } }
+        ],
         "UserData": {
           "Fn::Base64": {
             "Fn::Join": [ "",
@@ -136,7 +125,7 @@
             "Ebs": {
               "DeleteOnTermination" : false,
               "SnapshotId": { "Fn::If": [ "HasSnapshots", { "Ref": "SnapXvdc" }, { "Ref": "AWS::NoValue" } ] },
-              "VolumeSize": { "Fn::If": [ "HasSnapshots", { "Ref": "AWS::NoValue" }, 100 ] },
+              "VolumeSize": { "Fn::If": [ "HasSnapshots", { "Ref": "AWS::NoValue" }, 10 ] },
               "VolumeType" : "gp2"
             }
           } 
@@ -148,6 +137,7 @@
       "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
       "Properties" : {
         "AvailabilityZones" : [ "eu-central-1b" ],
+        "Instances" : [ { "Ref": "Instance" } ],
         "Listeners" : [
           {
             "InstancePort" : "80",
@@ -173,7 +163,7 @@
 
     "WaitOnMountCondition" : {
       "Type" : "AWS::CloudFormation::WaitCondition",
-      "DependsOn" : "AutoScalingGroup",
+      "DependsOn" : "Instance",
       "Properties" : {
         "Handle" : { "Ref" : "WaitOnMountHandle" },
         "Timeout" : "300"
