@@ -27,6 +27,159 @@ ERROR_getVolumeIdsByNameAndEnv=15
 ERROR_createSnapshot=16
 ERROR_waitCreateSnapshot=17
 ERROR_getVolumeName=18
+ERROR_getVolumeIdByName=19
+ERROR_getHostedZoneId=20
+ERROR_updateDnsEntry=21
+ERROR_getCname=22
+ERROR_notAwsHostedZone=23
+ERROR_getResourceTag=24
+ERROR_deleteVolume=25
+
+
+
+function switch() {
+  local env=$1
+  local url=$2
+
+  stack="$(getStackname "svm" "$env")"
+  switchVolumes "$stack" "$env"  || return $?
+  if [ -n "$url" ] ; then
+    switchServer "$stack" "$url" || return $?
+  fi
+}
+
+
+
+function getVolumeIdByName() {
+  local name=$1
+
+  aws ec2 describe-volumes \
+  --filters Name=tag:Name,Values="$name" \
+  --query 'Volumes[0].VolumeId' \
+  --output text \
+  || return $ERROR_getVolumeIdByName
+}
+
+
+
+function switchVolumes() {
+  local stack=$1
+  local env=$2
+
+  etcGo="$(getVolumeIdByPatternAndEnv  "etc-go"  "$env")" || return $?
+  varLib="$(getVolumeIdByPatternAndEnv "var-lib" "$env")" || return $?
+
+  if [ -n "$etcGo" ] ; then 
+    setResourceTag "$etcGo" "Env" ""  || return $?
+  fi
+
+  if [ -n "$varLib" ] ; then 
+    setResourceTag "$varLib" "Env" "" || return $?
+  fi
+
+  etcGo="$(getVolumeIdByName  "$stack-etc-go")"  || return $?
+  varLib="$(getVolumeIdByName "$stack-var-lib")" || return $?
+
+  setResourceTag "$etcGo"  "Env" "$env" || return $?
+  setResourceTag "$varLib" "Env" "$env" || return $?
+}
+
+
+
+function getCname() {
+  local stack=$1
+
+  # shellcheck disable=SC2016
+  gocdServerUrl=$(
+    aws cloudformation describe-stacks \
+    --stack-name "$stack" \
+    --query 'Stacks[*].Outputs[?OutputKey==`GoCDServerURL`].OutputValue' \
+    --output text
+  ) || return $ERROR_getCname
+
+  cname="${gocdServerUrl#*://}"
+  cname="${cname%%/*}"
+
+  echo "$cname"
+}
+
+
+
+function getHostedZoneId() {
+  local url=$1
+
+  zone="${url#*\.}."
+
+  zoneId=$(
+    aws route53 list-hosted-zones-by-name \
+    --query 'HostedZones[?Name==`'"$zone"'`].Id' \
+    --output text
+  ) || return $ERROR_getHostedZoneId
+
+  [ -z "$zoneId" ] \
+  && echo "* $zone is not a hosted zone in AWS. not updating. " \
+  && return $ERROR_notAwsHostedZone
+
+  zoneId=${zoneId//\/hostedzone\//}
+
+  echo "$zoneId" 
+}
+
+
+
+function updateDnsRecord() {
+  local url=$1
+  local cname=$2
+  local zoneId=$3
+
+  upsertJson="$(dirname "${BASH_SOURCE[0]}")/target/upsert.json"
+
+  cat <<EOF > "$upsertJson"
+{
+  "Comment": "Update GoCD Server Record",
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "$url",
+        "Type": "CNAME",
+        "TTL": 60,
+        "ResourceRecords": [ { "Value": "$cname" } ]
+      }
+    }
+  ]
+}
+EOF
+
+  echo "* updating $url to CNAME $cname"
+
+  aws route53 change-resource-record-sets \
+  --hosted-zone-id "$zoneId" \
+  --change-batch "file://$upsertJson" \
+  || $ERROR_updateDnsEntry
+}
+
+
+
+function switchServer() {
+  local stack=$1
+  local url=$2    # alias short name, e.g. gocd.yourcompany.com
+
+  cname=$(getCname "$stack") || return $?        # LB DNS name
+  zoneId=$(getHostedZoneId "$url")
+
+  sc=$?
+
+  if [ $sc -ne 0 ] ; then
+    if [ $sc -eq $ERROR_notAwsHostedZone ] ; then
+      return 0
+    else
+      return $sc
+    fi
+  fi
+  
+  updateDnsRecord "$url" "$cname" "$zoneId" || return $?
+}
 
 
 
@@ -131,11 +284,11 @@ function createSnapshot() {
 
 
 function getPublicIpAddress() {
-  local stackname=$1
+  local stack=$1
 
   aws ec2 describe-instances \
   --filters \
-    "Name=tag:Name,Values=$stackname" \
+    "Name=tag:Name,Values=$stack" \
     "Name=instance-state-name,Values=running" \
   --query "Reservations[*].Instances[*].PublicIpAddress" \
   --output text || return $ERROR_getPublicIpAddress
@@ -152,13 +305,27 @@ function getCertificateArn() {
 
 
 
+function getResourceTag() {
+  local resourceId=$1
+  local key=$2
+
+  aws ec2 describe-tags \
+  --filters \
+    Name=resource-id,Values="$resourceId" \
+    Name=Key,Values="$key" \
+  --query 'Tags[0].Value' \
+  --output text || return $ERROR_getResourceTag
+}
+
+
+
 function setResourceTag() {
-  local id=$1
+  local resourceId=$1
   local key=$2
   local value=$3
 
   aws ec2 create-tags \
-  --resources "$id" \
+  --resources "$resourceId" \
   --tags Key="$key",Value="$value" \
   || return $ERROR_setResourceTag
 }
@@ -332,8 +499,36 @@ function updateServer() {
 
 
 
+function deleteVolume() {
+  local volumeId=$1
+
+  env=$(getResourceTag "$volumeId" "Env")         || return $?
+  if [ "$env" != "live" ] ; then
+    echo "* deleting $etcGo"
+    aws ec2 delete-volume --volume-id "$volumeId" || return $ERROR_deleteVolume
+  else
+    echo "* $etcGo marked \"live\", skipping."
+  fi
+}
+
+
+
+# TODO: not unique. relate to attached instance instead of stackname.
+function destroyVolumes() {
+  local stack=$1
+
+  etcGo=$(getVolumeIdByName  "$stack-etc-go")  || return $?
+  [ -n "$etcGo" ]  && deleteVolume "$etcGo"
+
+  varLib=$(getVolumeIdByName "$stack-var-lib") || return $?
+  [ -n "$varLib" ] && deleteVolume "$varLib"
+}
+
+
+
 function destroyServer() {
   local env=$1
-  gocd_svm="$(getStackname "svm" "$env")"
-  destroyStack "$gocd_svm" || return $? 
+  stack="$(getStackname "svm" "$env")"
+  destroyStack "$stack"   || return $? 
+  destroyVolumes "$stack" || return $?
 }
