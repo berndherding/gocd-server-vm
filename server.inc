@@ -32,7 +32,7 @@ ERROR_getHostedZoneId=20
 ERROR_updateDnsEntry=21
 ERROR_getCname=22
 ERROR_notAwsHostedZone=23
-ERROR_getResourceTag=24
+#ERROR_getResourceTag=24
 ERROR_deleteVolume=25
 
 
@@ -309,12 +309,16 @@ function getResourceTag() {
   local resourceId=$1
   local key=$2
 
-  aws ec2 describe-tags \
-  --filters \
-    Name=resource-id,Values="$resourceId" \
-    Name=Key,Values="$key" \
-  --query 'Tags[0].Value' \
-  --output text || return $ERROR_getResourceTag
+  tag=$(
+    aws ec2 describe-tags \
+    --filters \
+      Name=resource-id,Values="$resourceId" \
+      Name=Key,Values="$key" \
+    --query 'Tags[0].Value' \
+    --output text 2> /dev/null
+  )
+
+  [ "$tag" != "None" ] && echo "$tag" || echo ""
 }
 
 
