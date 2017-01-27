@@ -139,6 +139,13 @@
       "Properties" : {
         "AvailabilityZones" : [ "eu-central-1b" ],
         "Instances" : [ { "Ref": "Instance" } ],
+        "HealthCheck": {
+          "HealthyThreshold" : "2",
+          "Interval" : "5",
+          "Target" : "TCP:80",
+          "Timeout" : "2",
+          "UnhealthyThreshold" : "2"
+        },
         "Listeners" : [
           {
             "InstancePort" : "80",
