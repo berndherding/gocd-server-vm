@@ -3,16 +3,16 @@
 # shellcheck source=server.inc
 . "$(dirname "${BASH_SOURCE[0]}")/server.inc"
 
-ENV=$1
-FROM=$2
-INSTANCE_TYPE=$3
+ENV=${1:-test}
+FROM=${2:-no-origin}
+INSTANCE_TYPE=${3-t2.small}
 
 SHUNIT=$(which shunit)
 
 
 
 function testCreateServer() {
-  createServer "$ENV" no-master-volume "$INSTANCE_TYPE"
+  createServer "$ENV" "$FROM" "$INSTANCE_TYPE"
   assertEquals "createServer failed" 0 $?
 }
 
