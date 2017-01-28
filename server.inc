@@ -34,7 +34,7 @@ ERROR_getCname=22
 ERROR_notAwsHostedZone=23
 #ERROR_getResourceTag=24
 ERROR_deleteVolume=25
-
+ERROR_getStackResource=26
 
 
 function switch() {
@@ -199,11 +199,11 @@ function getSnapshotId() {
 
 
 function getInstanceId() {
-  local gocd_svm=$1
+  local stack=$1
 
   aws ec2 describe-instances \
   --filters \
-    Name=tag:Name,Values="$gocd_svm" \
+    Name=tag:Name,Values="$stack" \
     Name=instance-state-name,Values=running,pending \
   --query 'Reservations[*].Instances[*].InstanceId' \
   --output text || return $ERROR_getInstanceId
@@ -305,6 +305,21 @@ function getCertificateArn() {
 
 
 
+function getStackResource() {
+  local env=$1
+  local resource=$2
+
+  stack=$(getStackname "svm" "$env")
+
+  aws cloudformation describe-stack-resources \
+  --stack-name "$stack" \
+  --query 'StackResources[?LogicalResourceId==`'"$resource"'`].PhysicalResourceId' \
+  --output text \
+  || return $ERROR_getStackResource
+}
+
+
+
 function getResourceTag() {
   local resourceId=$1
   local key=$2
@@ -337,21 +352,21 @@ function setResourceTag() {
 
 
 function setVolumeNames() {
-  local gocd_svm=$1
+  local stack=$1
 
-  instanceId="$(getInstanceId "$gocd_svm")"                 || return $?
-  volumeIdXvdb="$(getVolumeId "$instanceId" "/dev/xvdb")"   || return $?
-  volumeIdXvdc="$(getVolumeId "$instanceId" "/dev/xvdc")"   || return $?
-  setResourceTag "$volumeIdXvdb" "Name" "$gocd_svm-etc-go"  || return $?
-  setResourceTag "$volumeIdXvdc" "Name" "$gocd_svm-var-lib" || return $?
-  setVolumesWithoutName "$instanceId" "$gocd_svm"           || return $?
+  instanceId="$(getInstanceId "$stack")"                  || return $?
+  volumeIdXvdb="$(getVolumeId "$instanceId" "/dev/xvdb")" || return $?
+  volumeIdXvdc="$(getVolumeId "$instanceId" "/dev/xvdc")" || return $?
+  setResourceTag "$volumeIdXvdb" "Name" "$stack-etc-go"   || return $?
+  setResourceTag "$volumeIdXvdc" "Name" "$stack-var-lib"  || return $?
+  setVolumesWithoutName "$instanceId" "$stack"            || return $?
 }
 
 
 
 function setVolumesWithoutName() {
   local instanceId=$1
-  local gocd_svm=$2
+  local stack=$2
 
   # shellcheck disable=SC2016
   volumeDeviceTuples=$(aws ec2 describe-volumes \
@@ -374,7 +389,7 @@ function setVolumesWithoutName() {
     device=${a[1]}
     device=${device//\//-}
     device=${device#-}
-    setResourceTag "$volumeId" "Name" "$gocd_svm-$device" || return $?
+    setResourceTag "$volumeId" "Name" "$stack-$device" || return $?
   done
 }
 
@@ -389,9 +404,9 @@ function createServer() {
   [ -z "$DOCKER_HUB_PASSWORD" ] && return $ERROR_noDockerHubPassword
   [ -z "$DOCKER_HUB_EMAIL" ]    && return $ERROR_noDockerHubEmail
 
-  gocd_svm="$(getStackname "svm" "$env")"
+  stack="$(getStackname "svm" "$env")"
 
-  echo "createServer $gocd_svm from $from"
+  echo "createServer $stack from $from"
 
   vpcId=$(getDefaultVpcId)
   release="$(getRelease)" 
@@ -403,13 +418,13 @@ function createServer() {
   fromVolumeIdVarLib=$(getVolumeIdByPatternAndEnv "var-lib" "$from")
 
   if [ -n "$fromVolumeIdEtcGo" ] && [ -n "$fromVolumeIdVarLib" ] ; then
-    snapXvdb=$(createSnapshot "$gocd_svm-etc-go"  "$fromVolumeIdEtcGo")
-    snapXvdc=$(createSnapshot "$gocd_svm-var-lib" "$fromVolumeIdVarLib")
+    snapXvdb=$(createSnapshot "$stack-etc-go"  "$fromVolumeIdEtcGo")
+    snapXvdc=$(createSnapshot "$stack-var-lib" "$fromVolumeIdVarLib")
   fi
 
-  echo "* creating new server stack $gocd_svm"
+  echo "* creating new server stack $stack"
   aws cloudformation "create-stack" \
-  --stack-name "$gocd_svm" \
+  --stack-name "$stack" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/create-server.cf" \
   --parameters \
     ParameterKey=VpcId,ParameterValue="$vpcId"       \
@@ -422,21 +437,21 @@ function createServer() {
     ParameterKey=InstanceType,ParameterValue="$instanceType" \
   > /dev/null || return $ERROR_createServer_createStack
 
-  echo "* waiting for $gocd_svm to complete. this may take a few minutes."
-  aws cloudformation wait stack-create-complete --stack-name "$gocd_svm" --output text \
+  echo "* waiting for $stack to complete. this may take a few minutes."
+  aws cloudformation wait stack-create-complete --stack-name "$stack" --output text \
   || return $ERROR_createServer_waitStack
 
-  publicIp="$(getPublicIpAddress "$gocd_svm")" || return $?
+  publicIp="$(getPublicIpAddress "$stack")" || return $?
   echo "* public IP: $publicIp"
 
-  echo "$gocd_svm"     > "$(dirname "${BASH_SOURCE[0]}")/target/gocdSvm"
+  echo "$stack"        > "$(dirname "${BASH_SOURCE[0]}")/target/gocdSvm"
   echo "$release"      > "$(dirname "${BASH_SOURCE[0]}")/target/release"
   echo "$snapXvdb"     > "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdb"
   echo "$snapXvdc"     > "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdc"
   echo "$publicIp"     > "$(dirname "${BASH_SOURCE[0]}")/target/publicIp"
   echo "$instanceType" > "$(dirname "${BASH_SOURCE[0]}")/target/instanceType"
 
-  setVolumeNames "$gocd_svm" || return $?
+  setVolumeNames "$stack" || return $?
 }
 
 
@@ -445,10 +460,10 @@ function updateServer() {
   local env=$1
   local from=$2
 
-  gocd_svm="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdSvm 2> /dev/null)"
+  stack="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdSvm 2> /dev/null)"
 
   echo
-  echo "updateServer $gocd_svm"
+  echo "updateServer $stack"
 
   vpcId=$(getDefaultVpcId)
   imageId="$(getImageId)"
@@ -476,9 +491,9 @@ function updateServer() {
 
   "$(dirname "${BASH_SOURCE[0]}")/create_update_template.sh"
 
-  echo "* updating server stack $gocd_svm"
+  echo "* updating server stack $stack"
   aws cloudformation "update-stack" \
-  --stack-name "$gocd_svm" \
+  --stack-name "$stack" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/update-server.cf" \
   --parameters \
     ParameterKey=VpcId,ParameterValue="$vpcId"       \
@@ -496,8 +511,8 @@ function updateServer() {
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
   > /dev/null || return $ERROR_updateServer_updateStack
 
-  echo "* waiting for $gocd_svm to complete. this may take a few minutes."
-  aws cloudformation wait stack-update-complete --stack-name "$gocd_svm" --output text \
+  echo "* waiting for $stack to complete. this may take a few minutes."
+  aws cloudformation wait stack-update-complete --stack-name "$stack" --output text \
   || return $ERROR_udpateServer_waitStack
 }
 
