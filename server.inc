@@ -271,7 +271,7 @@ function createSnapshot() {
     --output text
   ) || return $ERROR_createSnapshot
 
-  sleep 10  # https://forums.aws.amazon.com/thread.jspa?messageID=564227, JoshuaF@AWS Posted on: Aug 19, 2014 7:18 AM
+  sleep 15  # https://forums.aws.amazon.com/thread.jspa?messageID=564227, JoshuaF@AWS Posted on: Aug 19, 2014 7:18 AM
 
   aws ec2 wait snapshot-completed --snapshot-ids "$snapshotId" \
   || return $ERROR_waitCreateSnapshot
@@ -406,7 +406,7 @@ function createServer() {
 
   stack="$(getStackname "svm" "$env")"
 
-  echo "createServer $stack from $from"
+  echo "create server $stack"
 
   vpcId=$(getDefaultVpcId)
   release="$(getRelease)" 
@@ -414,12 +414,21 @@ function createServer() {
   ecsAuth="$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | base64)"
   ecsEmail="$DOCKER_HUB_EMAIL"
 
+  echo "* release: $release"
+  echo "* imageId: $imageId"
+
   fromVolumeIdEtcGo=$(getVolumeIdByPatternAndEnv "etc-go" "$from")
   fromVolumeIdVarLib=$(getVolumeIdByPatternAndEnv "var-lib" "$from")
 
   if [ -n "$fromVolumeIdEtcGo" ] && [ -n "$fromVolumeIdVarLib" ] ; then
+    echo "* creating snapshot from \"$from\" etc-go $fromVolumeIdEtcGo"
     snapXvdb=$(createSnapshot "$stack-etc-go"  "$fromVolumeIdEtcGo")
+    echo "* snapshotId etc-go: $snapXvdb"
+    echo "* creating snapshot from \"$from\" var-lib $fromVolumeIdVarLib"
     snapXvdc=$(createSnapshot "$stack-var-lib" "$fromVolumeIdVarLib")
+    echo "* snapshotId var-lib: $snapXvdc"
+  else
+    echo "* creating volumes for $stack from scratch"
   fi
 
   echo "* creating new server stack $stack"
@@ -463,7 +472,7 @@ function updateServer() {
   stack="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdSvm 2> /dev/null)"
 
   echo
-  echo "updateServer $stack"
+  echo "update server $stack"
 
   vpcId=$(getDefaultVpcId)
   imageId="$(getImageId)"
@@ -473,6 +482,11 @@ function updateServer() {
   release="$(cat  "$(dirname "${BASH_SOURCE[0]}")/target/release"  2> /dev/null)"
   snapXvdb="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdb" 2> /dev/null)"
   snapXvdc="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdc" 2> /dev/null)"
+
+  echo "* release: $release"
+  echo "* imageId: $imageId"
+  echo "* snapshotId etc-go: $snapXvdb"
+  echo "* snapshotId var-lib: $snapXvdc"
 
   instanceType="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/instanceType 2> /dev/null)"
 
@@ -488,6 +502,9 @@ function updateServer() {
   if [ "$KEEP_GOCD_ADMIN_PASSWORD" != "true" ] ; then 
     gocdAdminOTP="$(openssl rand -base64 12)"
   fi
+ 
+  echo "* gocd server image: $gocdServerImage"
+  echo "* gocd agent  image: $gocdAgentImage"
 
   "$(dirname "${BASH_SOURCE[0]}")/create_update_template.sh"
 
