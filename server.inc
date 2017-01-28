@@ -35,6 +35,8 @@ ERROR_notAwsHostedZone=23
 #ERROR_getResourceTag=24
 ERROR_deleteVolume=25
 ERROR_getStackResource=26
+ERROR_destroySnapshot=27
+
 
 
 function switch() {
@@ -562,9 +564,23 @@ function destroyVolumes() {
 
 
 
+function destroySnapshots() {
+
+  snapXvdb="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/snapXvdb)"
+  snapXvdc="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/snapXvdc)"
+
+  aws ec2 delete-snapshot --snapshot-id "$snapXvdb" 2> /dev/null \
+  || return $ERROR_destroySnapshot
+  aws ec2 delete-snapshot --snapshot-id "$snapXvdc" 2> /dev/null \
+  || return $ERROR_destroySnapshot
+}
+
+
+
 function destroyServer() {
   local env=$1
   stack="$(getStackname "svm" "$env")"
   destroyStack "$stack"   || return $? 
   destroyVolumes "$stack" || return $?
+  destroySnapshots        || return $?
 }
