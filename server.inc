@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
-[ ! -d "$(dirname "${BASH_SOURCE[0]}")/inc"    ] && ln -s ../gocd-base-ami/inc    "$(dirname "${BASH_SOURCE[0]}")/inc"
-[ ! -d "$(dirname "${BASH_SOURCE[0]}")/target" ] && ln -s ../gocd-base-ami/target "$(dirname "${BASH_SOURCE[0]}")/target"
+[ ! -d "$(dirname "${BASH_SOURCE[0]}")/inc"    ] \
+  && ln -s "$(dirname "${BASH_SOURCE[0]}")/../gocd-base-ami/inc" "$(dirname "${BASH_SOURCE[0]}")/inc"
+
+[ ! -f "$(dirname "${BASH_SOURCE[0]}")/target/imageId" ] \
+  && ln -s "$(dirname "${BASH_SOURCE[0]}")/../gocd-base-ami/target" "$(dirname "${BASH_SOURCE[0]}")/target"
+
+
 
 # shellcheck source=/dev/null
 . "$(dirname "${BASH_SOURCE[0]}")/inc/commons.inc"
@@ -485,19 +490,10 @@ function updateServer() {
   snapXvdb="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdb" 2> /dev/null)"
   snapXvdc="$(cat "$(dirname "${BASH_SOURCE[0]}")/target/snapXvdc" 2> /dev/null)"
 
-  echo "* release: $release"
-  echo "* imageId: $imageId"
-  echo "* snapshotId etc-go: $snapXvdb"
-  echo "* snapshotId var-lib: $snapXvdc"
-
   instanceType="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/instanceType 2> /dev/null)"
 
   gocdServerImage="$(cat "$(dirname "${BASH_SOURCE[0]}")"/target/gocdServerImageName 2> /dev/null)"
-  gocdAgentImage="$(cat  "$(dirname "${BASH_SOURCE[0]}")"/target/gocdAgentImageName  2> /dev/null)"
-
-  # take a chance to override images
   [ -n "$GOCD_SERVER_IMAGE_TAG" ] && gocdServerImage="$DOCKER_HUB_USERNAME/gocd-server:$GOCD_SERVER_IMAGE_TAG"
-  [ -n "$GOCD_AGENT_IMAGE_TAG"  ] &&  gocdAgentImage="$DOCKER_HUB_USERNAME/gocd-agent:$GOCD_AGENT_IMAGE_TAG"
 
   [ -n "$GOCD_URL" ] && certificateArn="$(getCertificateArn "$GOCD_URL")"
 
@@ -505,13 +501,16 @@ function updateServer() {
     gocdAdminOTP="$(openssl rand -base64 12)"
   fi
  
+  echo "* release: $release"
+  echo "* imageId: $imageId"
+  echo "* snapshotId etc-go: $snapXvdb"
+  echo "* snapshotId var-lib: $snapXvdc"
   echo "* gocd server image: $gocdServerImage"
-  echo "* gocd agent  image: $gocdAgentImage"
 
   "$(dirname "${BASH_SOURCE[0]}")/create_update_template.sh"
 
   echo "* updating server stack $stack"
-  aws cloudformation "update-stack" \
+  aws cloudformation update-stack \
   --stack-name "$stack" \
   --template-body file://"$(dirname "${BASH_SOURCE[0]}")/update-server.cf" \
   --parameters \
