@@ -43,9 +43,10 @@
               }
             ],
             "Environment": [
+              { "Name": "ADMIN_PASSWORD", "Value": { "Ref": "GoCDAdminOTP" } },
               { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
               { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
-              { "Name": "ADMIN_PASSWORD", "Value": { "Ref": "GoCDAdminOTP" } }
+              { "Name": "GO_SERVER_SYSTEM_PROPERTIES", "Value": "-Dplugin.cd.go.contrib.elastic-agent.docker-swarm.log.level=debug" }
             ]
           },
           {
