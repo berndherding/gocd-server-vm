@@ -5,6 +5,6 @@
 
 ENV=${1:-live}
 FROM=${2:-live}   # label of volume to copy, e.g. "none", "live"
-INSTANCE_TYPE=${3:-t2.medium}
+INSTANCE_TYPE=${3:-t2.small}
 
 createServer "$ENV" "$FROM" "$INSTANCE_TYPE" || exit $?
