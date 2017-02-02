@@ -13,14 +13,12 @@
     "SnapXvdc":         { "Type": "String" },
     "InstanceType":     { "Type": "String" },
     "GoCDServerImage":  { "Type": "String", "Default": "" },
-    "GoCDAgentImage":   { "Type": "String", "Default": "" },
     "GithubPrivateKey": { "Type": "String", "Default": "", "NoEcho": true },
     "CertificateArn":   { "Type": "String", "Default": "" },
     "GoCDAdminOTP":     { "Type": "String", "Default": "****", "NoEcho": true }
   },
 
   "Conditions" : {
-    "WithAgentImage" : { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "GoCDAgentImage" }, "" ] } ] },
     "HasCertificate" : { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "CertificateArn" }, "" ] } ] },
     "HasSnapshots"   : { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "SnapXvdb" },       "" ] } ] }
   },
