@@ -36,7 +36,7 @@
               {
                 "ContainerPath": "/var/run/docker.sock",
                 "SourceVolume":   "var-run-docker-sock"
-              }
+              },
               {
                 "ContainerPath": { "Fn::If": [ "HasSnapshots", "/etc/go", "/xvdb" ] },
                 "SourceVolume":   "etc-go"
