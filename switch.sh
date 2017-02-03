@@ -3,12 +3,7 @@
 # shellcheck source=server.inc
 . "$(dirname "$BASH_SOURCE")/server.inc"
 
-# shellcheck source=volumes.inc
-. "$(dirname "$BASH_SOURCE")/volumes.inc"
+ENV=${1:-live}
+GOCD_URL=$2
 
-# shellcheck source=switch.inc
-. "$(dirname "$BASH_SOURCE")/switch.inc"
-
-ENVLABEL=${1:-live}
-
-switch "$ENVLABEL" "$GOCD_URL" || exit $?
+switch "$ENV" "$GOCD_URL" || exit $?
