@@ -48,30 +48,6 @@
               { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
               { "Name": "GO_SERVER_SYSTEM_PROPERTIES", "Value": "-Dplugin.cd.go.contrib.elastic-agent.docker-swarm.log.level=debug" }
             ]
-          },
-          {
-            "Fn::If" : [ 
-              "WithAgentImage",
-              {
-                "Name": "go-agent",
-                "Image": { "Ref": "GoCDAgentImage" },
-                "Memory": 512,
-                "MountPoints": [
-                  {
-                    "ContainerPath": "/var/run/docker.sock",
-                    "SourceVolume":   "var-run-docker-sock"
-                  }
-                ],
-                "Environment": [
-                  { "Name": "AWS_DEFAULT_REGION", "Value": "eu-central-1" },
-                  { "Name": "ENABLE_GITHUB_PRIVATE_REPO_SUPPORT", "Value": "yes" },
-                  { "Name": "GITHUB_PRIVATE_KEY", "Value": { "Ref": "GithubPrivateKey" } },
-                  { "Name": "GO_SERVER", "Value": { "Fn::GetAtt": [ "Instance", "PublicDnsName" ] } }
-
-                ]
-              },
-              { "Ref" : "AWS::NoValue" }
-            ]
           }
         ],
         "Volumes": [
