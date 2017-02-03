@@ -413,6 +413,7 @@ function createServer() {
 
   stack="$(getStackname "svm" "$env")"
 
+  echo
   echo "create server $stack"
 
   vpcId=$(getDefaultVpcId)
@@ -441,7 +442,7 @@ function createServer() {
   echo "* creating new server stack $stack"
   aws cloudformation "create-stack" \
   --stack-name "$stack" \
-  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/create-server.cf" \
+  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/vm.cf" \
   --parameters \
     ParameterKey=VpcId,ParameterValue="$vpcId"       \
     ParameterKey=Release,ParameterValue="$release"   \
@@ -507,12 +508,12 @@ function updateServer() {
   echo "* snapshotId var-lib: $snapXvdc"
   echo "* gocd server image: $gocdServerImage"
 
-  "$(dirname "${BASH_SOURCE[0]}")/create_update_template.sh"
+  "$(dirname "${BASH_SOURCE[0]}")/create_server_template.sh"
 
   echo "* updating server stack $stack"
   aws cloudformation update-stack \
   --stack-name "$stack" \
-  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/update-server.cf" \
+  --template-body file://"$(dirname "${BASH_SOURCE[0]}")/server.cf" \
   --parameters \
     ParameterKey=VpcId,ParameterValue="$vpcId"       \
     ParameterKey=Release,ParameterValue="$release"   \

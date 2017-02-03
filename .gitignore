@@ -1,4 +1,4 @@
 .*.swp
 target
 inc
-update-server.cf
+server.cf
