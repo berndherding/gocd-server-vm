@@ -335,7 +335,7 @@ function getResourceTag() {
     aws ec2 describe-tags \
     --filters \
       Name=resource-id,Values="$resourceId" \
-      Name=Key,Values="$key" \
+      Name=key,Values="$key" \
     --query 'Tags[0].Value' \
     --output text 2> /dev/null
   )
@@ -536,14 +536,15 @@ function updateServer() {
 
 
 function deleteVolume() {
-  local volumeId=$1
+  local volumeName=$1
+  local volumeId=$2
 
   env=$(getResourceTag "$volumeId" "Env")         || return $?
   if [ "$env" != "live" ] ; then
-    echo "* deleting $etcGo"
+    echo "* deleting $volumeName ($volumeId)"
     aws ec2 delete-volume --volume-id "$volumeId" || return $ERROR_deleteVolume
   else
-    echo "* $etcGo marked \"live\", skipping."
+    echo "* $volumeName ($volumeId) marked \"live\", skipping."
   fi
 }
 
@@ -554,10 +555,10 @@ function destroyVolumes() {
   local stack=$1
 
   etcGo=$(getVolumeIdByName  "$stack-etc-go")  || return $?
-  [ -n "$etcGo" ]  && deleteVolume "$etcGo"
+  [ -n "$etcGo" ]  && deleteVolume "$stack-etc-go"  "$etcGo"
 
   varLib=$(getVolumeIdByName "$stack-var-lib") || return $?
-  [ -n "$varLib" ] && deleteVolume "$varLib"
+  [ -n "$varLib" ] && deleteVolume "$stack-var-lib" "$varLib"
 }
 
 
