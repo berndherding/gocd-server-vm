@@ -523,7 +523,6 @@ function updateServer() {
     ParameterKey=SnapXvdc,ParameterValue="$snapXvdc" \
     ParameterKey=InstanceType,ParameterValue="$instanceType"       \
     ParameterKey=GoCDServerImage,ParameterValue="$gocdServerImage" \
-    ParameterKey=GoCDAgentImage,ParameterValue="$gocdAgentImage"   \
     ParameterKey=CertificateArn,ParameterValue="$certificateArn"   \
     ParameterKey=GoCDAdminOTP,ParameterValue="$gocdAdminOTP"       \
     ParameterKey=GithubPrivateKey,ParameterValue="$(getGithubPrivateKey)" \
